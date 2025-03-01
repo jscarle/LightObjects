@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <RootNamespace>LightObjects.Generated.Fixtures</RootNamespace>
+        <AssemblyName>LightObjects.Generated.Fixtures</AssemblyName>
+        <AnalysisLevel>latest-Default</AnalysisLevel>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>false</IsTestProject>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="LightResults" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\LightObjects.Generated\LightObjects.Generated.csproj"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer"
+                          SetTargetFramework="TargetFramework=netstandard2.0"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\LightObjects\LightObjects.csproj" />
+    </ItemGroup>
+
+</Project>
