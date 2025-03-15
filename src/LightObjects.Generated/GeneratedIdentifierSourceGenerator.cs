@@ -641,15 +641,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                   """
                 );
 
-            if (declaredValueType == "Guid")
-                source.AppendLine($$"""
-                                        private static Result Validate({{declaredValueType}} value)
-                                        {
-                                            return Result.Success();
-                                        }
-                                    """
-                );
-            else if (declaredValueType == "string")
+            if (declaredValueType == "string")
                 source.AppendLine($$"""
                                         private static Result Validate({{declaredValueType}} value)
                                         {
@@ -664,9 +656,6 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 source.AppendLine($$"""
                                         private static Result Validate({{declaredValueType}} value)
                                         {
-                                            if (value < 0)
-                                                return Result.Failure("The value must be equal to or greater than zero.");
-                                    
                                             return Result.Success();
                                         }
                                     """

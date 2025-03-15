@@ -199,9 +199,6 @@ public readonly partial struct TestIntId :
 
     private static Result Validate(int value)
     {
-        if (value < 0)
-            return Result.Failure("The value must be equal to or greater than zero.");
-
         return Result.Success();
     }
 }
