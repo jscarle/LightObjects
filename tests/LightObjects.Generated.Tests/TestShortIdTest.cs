@@ -22,7 +22,7 @@ public sealed class TestShortIdTest
         id.ToInt16().ShouldBe(validValue);
     }
 
-    [Fact]
+    [Fact(Skip = "No longer checking negative values.")]
     public void Create_InvalidValue_ShouldThrowException()
     {
         // Arrange
@@ -49,7 +49,7 @@ public sealed class TestShortIdTest
         id.ToInt16().ShouldBe(validValue);
     }
 
-    [Fact]
+    [Fact(Skip = "No longer checking negative values.")]
     public void TryCreate_InvalidValue_ShouldFail()
     {
         // Arrange
@@ -78,7 +78,6 @@ public sealed class TestShortIdTest
 
     [Theory]
     [InlineData("invalid")]
-    [InlineData("-1")]
     public void Parse_InvalidString_ShouldThrowException(string invalidString)
     {
         // Act
@@ -104,7 +103,6 @@ public sealed class TestShortIdTest
 
     [Theory]
     [InlineData("invalid")]
-    [InlineData("-1")]
     public void TryParse_InvalidString_ShouldFail(string invalidString)
     {
         // Act

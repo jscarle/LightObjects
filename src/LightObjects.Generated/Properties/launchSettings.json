@@ -3,7 +3,7 @@
   "profiles": {
     "DebugRoslynSourceGenerator": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "../LightObjects.Generated.csproj"
+      "targetProject": "../../tests/LightObjects.Generated.Fixtures/LightObjects.Generated.Fixtures.csproj"
     }
   }
 }
