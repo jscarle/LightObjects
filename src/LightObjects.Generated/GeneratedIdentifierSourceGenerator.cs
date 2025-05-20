@@ -49,6 +49,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
                       namespace {AttributesNamespace};
 
+                      /// <summary>
+                      /// Indicates that the LightObjects source generator should generate the implementation
+                      /// of a strongly typed identifier for the annotated type.
+                      /// </summary>
+                      /// <typeparam name="TIdentifier">
+                      /// The underlying type to use as the strongly typed identifier.
+                      /// </typeparam>
                       [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
                       public sealed class {GeneratedIdentifierAttributeName}<TIdentifier> : Attribute;
                       """;
