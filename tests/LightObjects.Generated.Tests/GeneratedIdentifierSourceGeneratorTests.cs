@@ -125,7 +125,7 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                      namespace LightObjects.Generated;
 
                      [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
-                     public sealed class GeneratedIdentifierAttribute<TIdentifier> : Attribute;
+                     internal sealed class GeneratedIdentifierAttribute<TIdentifier> : Attribute;
                      """;
     }
 

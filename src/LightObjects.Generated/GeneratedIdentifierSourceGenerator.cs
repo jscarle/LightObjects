@@ -57,7 +57,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                       /// The underlying type to use as the strongly typed identifier.
                       /// </typeparam>
                       [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
-                      public sealed class {GeneratedIdentifierAttributeName}<TIdentifier> : Attribute;
+                      internal sealed class {GeneratedIdentifierAttributeName}<TIdentifier> : Attribute;
                       """;
         context.AddSource(GeneratedIdentifierAttributeHint, SourceText.From(source, Encoding.UTF8));
     }
