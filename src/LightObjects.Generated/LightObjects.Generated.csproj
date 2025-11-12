@@ -3,7 +3,7 @@
     <!-- Compilation -->
     <PropertyGroup>
         <RootNamespace>LightObjects.Generated</RootNamespace>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <TargetFramework>netstandard2.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
