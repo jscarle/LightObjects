@@ -17,16 +17,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup .NET 6.0
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 6.x
-
-    - name: Setup .NET 7.0
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 7.x
-
     - name: Setup .NET 8.0
       uses: actions/setup-dotnet@v4
       with:
@@ -37,6 +27,11 @@ jobs:
       with:
         dotnet-version: 9.x
 
+    - name: Setup .NET 10.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+
     - name: Restore dependencies
       run: dotnet restore
 
@@ -44,7 +39,7 @@ jobs:
       run: |
         dotnet build ./src/LightObjects/LightObjects.csproj --configuration Release --no-restore
         dotnet pack ./src/LightObjects/LightObjects.csproj --configuration Release --no-build --output .
-    
+
     - name: Pack LightObjects.Generated
       run: |
         dotnet build ./src/LightObjects.Generated/LightObjects.Generated.csproj --configuration Release --no-restore
