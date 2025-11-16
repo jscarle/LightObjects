@@ -199,13 +199,18 @@ public sealed class TestGuidIdTypeConverter : TypeConverter
 {
     public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
     {
-        return sourceType == typeof(Guid) || base.CanConvertFrom(context, sourceType);
+        return sourceType == typeof(string)
+            || sourceType == typeof(Guid)
+            || base.CanConvertFrom(context, sourceType);
     }
 
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {
         if (value is Guid identifierValue)
             return TestGuidId.Create(identifierValue);
+
+        if (value is string stringValue)
+            return TestGuidId.Parse(stringValue);
 
         return base.ConvertFrom(context, culture, value);
     }

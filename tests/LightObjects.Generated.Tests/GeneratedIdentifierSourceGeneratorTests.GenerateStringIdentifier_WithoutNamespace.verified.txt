@@ -197,13 +197,18 @@ public sealed class TestStringIdTypeConverter : TypeConverter
 {
     public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
     {
-        return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+        return sourceType == typeof(string)
+            || sourceType == typeof(string)
+            || base.CanConvertFrom(context, sourceType);
     }
 
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {
         if (value is string identifierValue)
             return TestStringId.Create(identifierValue);
+
+        if (value is string stringValue)
+            return TestStringId.Create(stringValue);
 
         return base.ConvertFrom(context, culture, value);
     }
