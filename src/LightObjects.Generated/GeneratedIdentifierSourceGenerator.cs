@@ -10,10 +10,21 @@ namespace LightObjects.Generated;
 [Generator]
 public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 {
+    private sealed record IdentifierTransformResult(Identifier? Identifier, Diagnostic? Diagnostic);
+
     private const string AttributesNamespace = "LightObjects.Generated";
     private const string GeneratedIdentifierAttributeName = "GeneratedIdentifierAttribute";
     private const string GeneratedIdentifierAttributeFullyQualifiedName = $"{AttributesNamespace}.{GeneratedIdentifierAttributeName}`1";
     private const string GeneratedIdentifierAttributeHint = $"{GeneratedIdentifierAttributeFullyQualifiedName}.g.cs";
+
+    private static readonly DiagnosticDescriptor UnsupportedIdentifierTypeDiagnostic = new(
+        id: "LO0001",
+        title: "Unsupported identifier type",
+        messageFormat: "'{0}' is not a supported identifier type. Only short, int, long, string, or System.Guid are allowed.",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
 
     private static readonly string FileHeader = $"""
                                                  //-----------------------------------------------------------------------------
@@ -34,7 +45,6 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
         var generatedIdentifiers = context.SyntaxProvider
             .ForAttributeWithMetadataName(GeneratedIdentifierAttributeFullyQualifiedName, Filter, Transform)
-            .WhereNotNull()
             .Collect();
 
         context.RegisterSourceOutput(generatedIdentifiers, GenerateIdentifier);
@@ -69,12 +79,12 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         return syntaxNode.IsKind(SyntaxKind.StructDeclaration) || syntaxNode.IsKind(SyntaxKind.ClassDeclaration);
     }
 
-    private static Identifier? Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
+    private static IdentifierTransformResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (context.TargetSymbol is not INamedTypeSymbol namedTypeSymbol)
-            return null;
+            return new IdentifierTransformResult(null, null);
 
         var containingDeclarations = namedTypeSymbol.GetContainingDeclarations(cancellationToken);
         var symbolName = namedTypeSymbol.Name;
@@ -83,7 +93,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
         var attribute = context.Attributes[0].AttributeClass!;
         if (attribute.TypeArguments.Length != 1)
-            return null;
+            return new IdentifierTransformResult(null, null);
 
         var typeArgument = attribute.TypeArguments[0];
 
@@ -113,7 +123,17 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 break;
             default:
                 if (typeArgument is not { Name: "Guid", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } })
-                    return null;
+                {
+                    var attributeSyntax = context.Attributes[0].ApplicationSyntaxReference?.GetSyntax(cancellationToken);
+                    var location = attributeSyntax?.GetLocation() ?? context.TargetNode.GetLocation();
+                    var diagnostic = Diagnostic.Create(
+                        UnsupportedIdentifierTypeDiagnostic,
+                        location,
+                        typeArgument.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
+                    );
+                    return new IdentifierTransformResult(null, diagnostic);
+                }
+
                 declaredValueType = "Guid";
                 fullValueType = "Guid";
                 break;
@@ -129,21 +149,30 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             supportsProviderBasedTryParse
         );
 
-        return symbol;
+        return new IdentifierTransformResult(symbol, null);
     }
 
-    private static void GenerateIdentifier(SourceProductionContext context, ImmutableArray<Identifier> generatedIdentifiers)
+    private static void GenerateIdentifier(SourceProductionContext context, ImmutableArray<IdentifierTransformResult> generatedIdentifiers)
     {
-        foreach (var symbol in generatedIdentifiers)
+        foreach (var result in generatedIdentifiers)
         {
-            var symbolNamespace = symbol.ContainingDeclarations.ToNamespace();
-            var symbolName = symbol.Name;
-            var isStruct = symbol.IsStruct;
-            var isPublic = symbol.IsPublic;
-            var declaredValueType = symbol.DeclaredValueType;
-            var fullValueType = symbol.FullValueType;
+            if (result.Diagnostic is { } diagnostic)
+                context.ReportDiagnostic(diagnostic);
 
-            var supportsProviderBasedTryParse = symbol.SupportsProviderBasedTryParse;
+            var symbol = result.Identifier;
+            if (!symbol.HasValue)
+                continue;
+
+            var identifier = symbol.Value;
+
+            var symbolNamespace = identifier.ContainingDeclarations.ToNamespace();
+            var symbolName = identifier.Name;
+            var isStruct = identifier.IsStruct;
+            var isPublic = identifier.IsPublic;
+            var declaredValueType = identifier.DeclaredValueType;
+            var fullValueType = identifier.FullValueType;
+
+            var supportsProviderBasedTryParse = identifier.SupportsProviderBasedTryParse;
 
             var source = new StringBuilder();
 
@@ -754,7 +783,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                             """
             );
 
-            var hint = $"{symbol.ContainingDeclarations.ToFullyQualifiedName()}.{symbol.Name}.g.cs";
+            var hint = $"{identifier.ContainingDeclarations.ToFullyQualifiedName()}.{identifier.Name}.g.cs";
             context.AddSource(hint, source.ToString());
         }
     }
