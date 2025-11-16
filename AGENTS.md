@@ -15,7 +15,7 @@ This repository contains C# source code for **LightObjects**, a lightweight valu
 
 ## Building and Testing
 
-This repo normally builds with multiple target frameworks (net6.0–net9.0) and the generator targets `netstandard2.0`. The solution file is `LightObjects.sln`. Build and test scripts use the `dotnet` CLI. **In this Codex environment do not attempt to install .NET or run builds/tests.**
+This repo normally builds with multiple target frameworks (net6.0–net9.0) and the generator targets `netstandard2.0`. The solution file is `LightObjects.sln`. Build and test scripts use the `dotnet` CLI.
 
 ## Performance Notes
 
