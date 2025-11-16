@@ -89,19 +89,23 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
         string? declaredValueType;
         string? fullValueType;
+        var supportsProviderBasedTryParse = false;
         switch (typeArgument.SpecialType)
         {
             case SpecialType.System_Int16:
                 declaredValueType = "short";
                 fullValueType = "Int16";
+                supportsProviderBasedTryParse = true;
                 break;
             case SpecialType.System_Int32:
                 declaredValueType = "int";
                 fullValueType = "Int32";
+                supportsProviderBasedTryParse = true;
                 break;
             case SpecialType.System_Int64:
                 declaredValueType = "long";
                 fullValueType = "Int64";
+                supportsProviderBasedTryParse = true;
                 break;
             case SpecialType.System_String:
                 declaredValueType = "string";
@@ -115,7 +119,15 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 break;
         }
 
-        var symbol = new Identifier(containingDeclarations, symbolName, isStruct, isPublic, declaredValueType, fullValueType);
+        var symbol = new Identifier(
+            containingDeclarations,
+            symbolName,
+            isStruct,
+            isPublic,
+            declaredValueType,
+            fullValueType,
+            supportsProviderBasedTryParse
+        );
 
         return symbol;
     }
@@ -130,6 +142,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             var isPublic = symbol.IsPublic;
             var declaredValueType = symbol.DeclaredValueType;
             var fullValueType = symbol.FullValueType;
+
+            var supportsProviderBasedTryParse = symbol.SupportsProviderBasedTryParse;
 
             var source = new StringBuilder();
 
@@ -277,19 +291,22 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                     """
                 );
 
-                source.AppendLine($$"""
-                                        /// <inheritdoc />
-                                        public static bool TryParse(string s, IFormatProvider provider, out {{symbolName}} identifier)
-                                        {
-                                            if ({{declaredValueType}}.TryParse(s, provider, out var value))
-                                                return TryCreate(value).IsSuccess(out identifier);
-                                    
-                                            identifier = default;
-                                            return false;
-                                        }
+                if (supportsProviderBasedTryParse)
+                {
+                    source.AppendLine($$"""
+                                            /// <inheritdoc />
+                                            public static bool TryParse(string s, IFormatProvider provider, out {{symbolName}} identifier)
+                                            {
+                                                if ({{declaredValueType}}.TryParse(s, provider, out var value))
+                                                    return TryCreate(value).IsSuccess(out identifier);
 
-                                    """
-                );
+                                                identifier = default;
+                                                return false;
+                                            }
+
+                                        """
+                    );
+                }
             }
 
             if (isStruct)
@@ -743,7 +760,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         bool IsStruct,
         bool IsPublic,
         string DeclaredValueType,
-        string FullValueType
+        string FullValueType,
+        bool SupportsProviderBasedTryParse
     )
     {
         public EquatableImmutableArray<Declaration> ContainingDeclarations { get; } = ContainingDeclarations;
@@ -752,5 +770,6 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         public bool IsPublic { get; } = IsPublic;
         public string DeclaredValueType { get; } = DeclaredValueType;
         public string FullValueType { get; } = FullValueType;
+        public bool SupportsProviderBasedTryParse { get; } = SupportsProviderBasedTryParse;
     }
 }
