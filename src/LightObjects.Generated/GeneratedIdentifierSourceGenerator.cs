@@ -696,14 +696,19 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                 {
                                     public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
                                     {
-                                        return sourceType == typeof({{declaredValueType}}) || base.CanConvertFrom(context, sourceType);
+                                        return sourceType == typeof(string)
+                                            || sourceType == typeof({{declaredValueType}})
+                                            || base.CanConvertFrom(context, sourceType);
                                     }
-                                
+
                                     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
                                     {
                                         if (value is {{declaredValueType}} identifierValue)
                                             return {{symbolName}}.Create(identifierValue);
-                                
+
+                                        if (value is string stringValue)
+                                            return {{(declaredValueType == "string" ? $"{symbolName}.Create(stringValue)" : $"{symbolName}.Parse(stringValue)")}};
+
                                         return base.ConvertFrom(context, culture, value);
                                     }
                                 }

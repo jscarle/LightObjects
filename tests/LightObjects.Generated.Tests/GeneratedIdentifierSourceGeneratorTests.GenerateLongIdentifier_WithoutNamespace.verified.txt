@@ -207,13 +207,18 @@ public sealed class TestLongIdTypeConverter : TypeConverter
 {
     public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
     {
-        return sourceType == typeof(long) || base.CanConvertFrom(context, sourceType);
+        return sourceType == typeof(string)
+            || sourceType == typeof(long)
+            || base.CanConvertFrom(context, sourceType);
     }
 
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {
         if (value is long identifierValue)
             return TestLongId.Create(identifierValue);
+
+        if (value is string stringValue)
+            return TestLongId.Parse(stringValue);
 
         return base.ConvertFrom(context, culture, value);
     }
