@@ -41,7 +41,7 @@
     <!-- Output -->
     <PropertyGroup>
         <AssemblyName>LightObjects.Generated</AssemblyName>
-        <Version>10.0.0-preview.1</Version>
+        <Version>10.0.0</Version>
         <AssemblyVersion>10.0.0.0</AssemblyVersion>
         <FileVersion>10.0.0.0</FileVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
@@ -50,7 +50,7 @@
 
     <!-- Package -->
     <PropertyGroup>
-        <IsPackable>true</IsPackable>
+        <IsPackable>false</IsPackable>
         <PackageId>LightObjects.Generated</PackageId>
         <Title>LightObjects.Generated</Title>
         <Description>A Roslyn source generator that automatically creates strongly-typed identifier structs.</Description>
