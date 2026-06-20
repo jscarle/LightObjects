@@ -249,7 +249,10 @@ var rawValue = ((IValueObject<Guid, CustomerId>)customerId).Value;
 
 ### JSON and type conversion
 
-Generated identifiers include `System.Text.Json` converters and `TypeConverter` implementations.
+Generated identifiers include `System.Text.Json` converters. Non-generic identifiers and generic
+class identifiers also support `TypeConverter` conversion. Generic struct identifiers intentionally
+omit `TypeConverter` metadata because .NET does not provide a component-model attribute path that can
+pass the closed generic struct type to the converter.
 
 ```csharp
 using System.Text.Json;

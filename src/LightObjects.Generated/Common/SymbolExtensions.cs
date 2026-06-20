@@ -130,7 +130,7 @@ internal static class SymbolExtensions
         else if (typeParameter.HasValueTypeConstraint)
             constraints.Add("struct");
         else if (typeParameter.HasReferenceTypeConstraint)
-            constraints.Add("class");
+            constraints.Add(typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated ? "class?" : "class");
         else if (typeParameter.HasNotNullConstraint)
             constraints.Add("notnull");
 

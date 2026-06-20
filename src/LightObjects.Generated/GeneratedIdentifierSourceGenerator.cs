@@ -227,6 +227,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             var jsonConverterName = $"{symbolName}JsonConverter{genericParameterList}";
             var converterTypeOfName = $"{symbolName}TypeConverter{unboundGenericParameterList}";
             var jsonConverterTypeOfName = $"{symbolName}JsonConverter{unboundGenericParameterList}";
+            var hasGenericContext = HasGenericContext(identifier);
+            var genericContextHelperName = ToGenericContextHelperName(identifier);
+            var typeDescriptionProviderName = $"{genericContextHelperName}TypeDescriptionProvider";
+            var jsonConverterFactoryName = $"{genericContextHelperName}JsonConverterFactory";
+            var typeDescriptionProviderTypeOfName = ToFullyQualifiedTypeReference(symbolNamespace, typeDescriptionProviderName);
+            var jsonConverterFactoryTypeOfName = ToFullyQualifiedTypeReference(symbolNamespace, jsonConverterFactoryName);
+            var unboundIdentifierTypeReference = ToFullyQualifiedUnboundTypeReference(identifier);
             var isStruct = identifier.IsStruct;
             var accessibility = identifier.Accessibility;
             var declaredValueType = identifier.DeclaredValueType;
@@ -278,9 +285,27 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 containingTypeCount++;
             }
 
+            if (hasGenericContext)
+            {
+                if (!isStruct)
+                    source.AppendLine($$"""
+                                        [global::System.ComponentModel.TypeDescriptionProvider(typeof({{typeDescriptionProviderTypeOfName}}))]
+                                        """
+                    );
+
+                source.AppendLine($$"""
+                                    [global::System.Text.Json.Serialization.JsonConverter(typeof({{jsonConverterFactoryTypeOfName}}))]
+                                    """
+                );
+            }
+            else
+                source.AppendLine($$"""
+                                    [global::System.ComponentModel.TypeConverter(typeof({{converterTypeOfName}}))]
+                                    [global::System.Text.Json.Serialization.JsonConverter(typeof({{jsonConverterTypeOfName}}))]
+                                    """
+                );
+
             source.AppendLine($$"""
-                                [global::System.ComponentModel.TypeConverter(typeof({{converterTypeOfName}}))]
-                                [global::System.Text.Json.Serialization.JsonConverter(typeof({{jsonConverterTypeOfName}}))]
                                 {{accessibility}} {{(isStruct ? "readonly" : "sealed")}} partial {{(isStruct ? "struct" : "class")}} {{symbolReferenceName}} :
                                     global::LightObjects.ICreatableValueObject<{{valueTypeReference}}, {{symbolReferenceName}}>,
                                 """
@@ -371,7 +396,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         {
                                             if ({{valueTypeReference}}.TryParse(s, out var value))
                                                 return TryCreate(value);
-                                    
+
                                             return global::LightResults.Result.Failure<{{symbolReferenceName}}>("The string is not a valid identifier.");
                                         }
 
@@ -795,69 +820,72 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                               """
             );
 
-            source.AppendLine($$"""
-                                {{accessibility}} sealed class {{converterName}} : global::System.ComponentModel.TypeConverter{{genericParameterConstraintList}}
-                                {
-                                    public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
+            if (!hasGenericContext)
+            {
+                source.AppendLine($$"""
+                                    {{accessibility}} sealed class {{converterName}} : global::System.ComponentModel.TypeConverter{{genericParameterConstraintList}}
                                     {
-                                        return sourceType == typeof(global::System.String)
-                                            || sourceType == typeof({{valueTypeReference}})
-                                            || base.CanConvertFrom(context, sourceType);
+                                        public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
+                                        {
+                                            return sourceType == typeof(global::System.String)
+                                                || sourceType == typeof({{valueTypeReference}})
+                                                || base.CanConvertFrom(context, sourceType);
+                                        }
+
+                                        public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
+                                        {
+                                            if (value is {{valueTypeReference}} identifierValue)
+                                                return {{symbolReferenceName}}.Create(identifierValue);
+
+                                            if (value is global::System.String stringValue)
+                                                return {{(declaredValueType == "string" ? $"{symbolReferenceName}.Create(stringValue)" : $"{symbolReferenceName}.Parse(stringValue)")}};
+
+                                            return base.ConvertFrom(context, culture, value);
+                                        }
                                     }
 
-                                    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
-                                    {
-                                        if (value is {{valueTypeReference}} identifierValue)
-                                            return {{symbolReferenceName}}.Create(identifierValue);
-
-                                        if (value is global::System.String stringValue)
-                                            return {{(declaredValueType == "string" ? $"{symbolReferenceName}.Create(stringValue)" : $"{symbolReferenceName}.Parse(stringValue)")}};
-
-                                        return base.ConvertFrom(context, culture, value);
-                                    }
-                                }
-
-                                """
-            );
-            source.AppendLine($$"""
-                                {{accessibility}} sealed class {{jsonConverterName}} : global::System.Text.Json.Serialization.JsonConverter<{{symbolReferenceName}}>{{genericParameterConstraintList}}
-                                {
-                                    public override void Write(global::System.Text.Json.Utf8JsonWriter writer, {{symbolReferenceName}} identifier, global::System.Text.Json.JsonSerializerOptions options)
-                                    {
-                                        var value = ((global::LightObjects.IValueObject<{{valueTypeReference}}, {{symbolReferenceName}}>)identifier).Value;
-                                """
-            );
-
-            if (declaredValueType == "Guid")
-                source.AppendLine("""        writer.WriteStringValue(value.ToString());""");
-            else if (declaredValueType == "string")
-                source.AppendLine("""        writer.WriteStringValue(value);""");
-            else
-                source.AppendLine("""        writer.WriteNumberValue(value);""");
-
-            source.AppendLine($$"""
-                                    }
-                                
-                                    public override {{symbolReferenceName}} Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
-                                    {
-                                        var value = reader.Get{{fullValueType}}();
-                                """
-            );
-            if (declaredValueType == "string" && !hasCustomValidation)
-                source.AppendLine("""
-                                          if (global::System.String.IsNullOrWhiteSpace(value))
-                                              throw new global::System.InvalidOperationException("The value must not be empty.");
-
-                                  """
+                                    """
                 );
-            var jsonValueExpression = declaredValueType == "string" && hasCustomValidation ? "value!" : "value";
-            source.Append($$"""
-                                    return {{symbolReferenceName}}.Create({{jsonValueExpression}});
-                                }
-                            }
+                source.AppendLine($$"""
+                                    {{accessibility}} sealed class {{jsonConverterName}} : global::System.Text.Json.Serialization.JsonConverter<{{symbolReferenceName}}>{{genericParameterConstraintList}}
+                                    {
+                                        public override void Write(global::System.Text.Json.Utf8JsonWriter writer, {{symbolReferenceName}} identifier, global::System.Text.Json.JsonSerializerOptions options)
+                                        {
+                                            var value = ((global::LightObjects.IValueObject<{{valueTypeReference}}, {{symbolReferenceName}}>)identifier).Value;
+                                    """
+                );
 
-                            """
-            );
+                if (declaredValueType == "Guid")
+                    source.AppendLine("""        writer.WriteStringValue(value.ToString());""");
+                else if (declaredValueType == "string")
+                    source.AppendLine("""        writer.WriteStringValue(value);""");
+                else
+                    source.AppendLine("""        writer.WriteNumberValue(value);""");
+
+                source.AppendLine($$"""
+                                        }
+
+                                        public override {{symbolReferenceName}} Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
+                                        {
+                                            var value = reader.Get{{fullValueType}}();
+                                    """
+                );
+                if (declaredValueType == "string" && !hasCustomValidation)
+                    source.AppendLine("""
+                                              if (global::System.String.IsNullOrWhiteSpace(value))
+                                                  throw new global::System.InvalidOperationException("The value must not be empty.");
+
+                                      """
+                    );
+                var jsonValueExpression = declaredValueType == "string" && hasCustomValidation ? "value!" : "value";
+                source.Append($$"""
+                                        return {{symbolReferenceName}}.Create({{jsonValueExpression}});
+                                    }
+                                }
+
+                                """
+                );
+            }
 
             for (var index = 0; index < containingTypeCount; index++)
             {
@@ -868,11 +896,318 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 );
             }
 
+            if (hasGenericContext)
+            {
+                if (!isStruct)
+                    AppendGenericContextTypeDescriptionProvider(source, typeDescriptionProviderName, valueTypeReference, declaredValueType);
+
+                AppendGenericContextJsonConverterFactory(
+                    source,
+                    jsonConverterFactoryName,
+                    unboundIdentifierTypeReference,
+                    valueTypeReference,
+                    fullValueType,
+                    declaredValueType,
+                    hasCustomValidation
+                );
+            }
+
             var hintPrefix = identifier.ContainingDeclarations.ToFullyQualifiedName();
             var targetHintName = $"{identifier.Name}{identifier.GenericParameters.ToGenericAritySuffix()}";
             var hint = hintPrefix.Length == 0 ? $"{targetHintName}.g.cs" : $"{hintPrefix}.{targetHintName}.g.cs";
             context.AddSource(hint, source.ToString());
         }
+    }
+
+    private static bool HasGenericContext(Identifier identifier)
+    {
+        if (identifier.GenericParameters.Count > 0)
+            return true;
+
+        foreach (var declaration in identifier.ContainingDeclarations)
+        {
+            if (declaration.Type != DeclarationType.Namespace && declaration.GenericParameters.Count > 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string ToFullyQualifiedTypeReference(string symbolNamespace, string typeName)
+    {
+        return symbolNamespace.Length == 0 ? $"global::{typeName}" : $"global::{symbolNamespace}.{typeName}";
+    }
+
+    private static string ToGenericContextHelperName(Identifier identifier)
+    {
+        var builder = new StringBuilder("LightObjectsGenerated");
+
+        foreach (var declaration in identifier.ContainingDeclarations)
+        {
+            if (declaration.Type == DeclarationType.Namespace)
+                continue;
+
+            builder.Append('_');
+            builder.Append(declaration.Name);
+            builder.Append(declaration.GenericParameters.Count);
+        }
+
+        builder.Append('_');
+        builder.Append(identifier.Name);
+        builder.Append(identifier.GenericParameters.Count);
+
+        return builder.ToString();
+    }
+
+    private static string ToFullyQualifiedUnboundTypeReference(Identifier identifier)
+    {
+        var builder = new StringBuilder("global::");
+        var needsSeparator = false;
+
+        foreach (var declaration in identifier.ContainingDeclarations)
+        {
+            if (needsSeparator)
+                builder.Append('.');
+
+            builder.Append(declaration.Name);
+
+            if (declaration.Type != DeclarationType.Namespace)
+                builder.Append(declaration.GenericParameters.ToUnboundGenericParameterList());
+
+            needsSeparator = true;
+        }
+
+        if (needsSeparator)
+            builder.Append('.');
+
+        builder.Append(identifier.Name);
+        builder.Append(identifier.GenericParameters.ToUnboundGenericParameterList());
+
+        return builder.ToString();
+    }
+
+    private static void AppendGenericContextTypeDescriptionProvider(StringBuilder source, string typeDescriptionProviderName, string valueTypeReference, string declaredValueType)
+    {
+        source.AppendLine($$"""
+                            internal sealed class {{typeDescriptionProviderName}} : global::System.ComponentModel.TypeDescriptionProvider
+                            {
+                                private static readonly global::System.ComponentModel.TypeDescriptionProvider DefaultProvider =
+                                    global::System.ComponentModel.TypeDescriptor.GetProvider(typeof(global::System.Object));
+
+                                public {{typeDescriptionProviderName}}()
+                                    : base(DefaultProvider)
+                                {
+                                }
+
+                                public override global::System.ComponentModel.ICustomTypeDescriptor GetTypeDescriptor(global::System.Type objectType, global::System.Object? instance)
+                                {
+                                    var descriptor = base.GetTypeDescriptor(objectType, instance);
+                                    return new IdentifierTypeDescriptor(descriptor, objectType);
+                                }
+
+                                private sealed class IdentifierTypeDescriptor : global::System.ComponentModel.CustomTypeDescriptor
+                                {
+                                    private readonly global::System.Type _objectType;
+
+                                    public IdentifierTypeDescriptor(global::System.ComponentModel.ICustomTypeDescriptor? parent, global::System.Type objectType)
+                                        : base(parent)
+                                    {
+                                        _objectType = objectType;
+                                    }
+
+                                    public override global::System.ComponentModel.TypeConverter GetConverter()
+                                    {
+                                        return new IdentifierTypeConverter(_objectType);
+                                    }
+                                }
+
+                                private sealed class IdentifierTypeConverter : global::System.ComponentModel.TypeConverter
+                                {
+                                    private readonly global::System.Reflection.MethodInfo _createMethod;
+                            """
+        );
+
+        if (declaredValueType != "string")
+            source.AppendLine("""
+                                      private readonly global::System.Reflection.MethodInfo _parseMethod;
+                              """
+            );
+
+        source.AppendLine($$"""
+
+                                    public IdentifierTypeConverter(global::System.Type identifierType)
+                                    {
+                                        _createMethod = identifierType.GetMethod(
+                                            "Create",
+                                            global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static,
+                                            binder: null,
+                                            types: new[] { typeof({{valueTypeReference}}) },
+                                            modifiers: null
+                                        ) ?? throw new global::System.InvalidOperationException("The generated identifier Create method could not be found.");
+                            """
+        );
+
+        if (declaredValueType != "string")
+            source.AppendLine("""
+
+                                      _parseMethod = identifierType.GetMethod(
+                                          "Parse",
+                                          global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static,
+                                          binder: null,
+                                          types: new[] { typeof(global::System.String) },
+                                          modifiers: null
+                                      ) ?? throw new global::System.InvalidOperationException("The generated identifier Parse method could not be found.");
+                              """
+            );
+
+        source.AppendLine($$"""
+                                    }
+
+                                    public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
+                                    {
+                                        return sourceType == typeof(global::System.String)
+                                            || sourceType == typeof({{valueTypeReference}})
+                                            || base.CanConvertFrom(context, sourceType);
+                                    }
+
+                                    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
+                                    {
+                                        if (value is {{valueTypeReference}} identifierValue)
+                                            return Create(identifierValue);
+
+                                        if (value is global::System.String stringValue)
+                                            return {{(declaredValueType == "string" ? "Create(stringValue)" : "Parse(stringValue)")}};
+
+                                        return base.ConvertFrom(context, culture, value);
+                                    }
+
+                                    private global::System.Object Create({{valueTypeReference}} value)
+                                    {
+                                        return Invoke(_createMethod, value);
+                                    }
+                            """
+        );
+
+        if (declaredValueType != "string")
+            source.AppendLine("""
+
+                                  private global::System.Object Parse(global::System.String value)
+                                  {
+                                      return Invoke(_parseMethod, value);
+                                  }
+                              """
+            );
+
+        source.AppendLine("""
+
+                                    private static global::System.Object Invoke(global::System.Reflection.MethodInfo method, global::System.Object? value)
+                                    {
+                                        try
+                                        {
+                                            return method.Invoke(null, new[] { value })!;
+                                        }
+                                        catch (global::System.Reflection.TargetInvocationException exception) when (exception.InnerException is not null)
+                                        {
+                                            global::System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+                                            throw;
+                                        }
+                                    }
+                                }
+                            }
+
+                            """
+        );
+    }
+
+    private static void AppendGenericContextJsonConverterFactory(
+        StringBuilder source,
+        string jsonConverterFactoryName,
+        string unboundIdentifierTypeReference,
+        string valueTypeReference,
+        string fullValueType,
+        string declaredValueType,
+        bool hasCustomValidation
+    )
+    {
+        source.AppendLine($$"""
+                            internal sealed class {{jsonConverterFactoryName}} : global::System.Text.Json.Serialization.JsonConverterFactory
+                            {
+                                public override bool CanConvert(global::System.Type typeToConvert)
+                                {
+                                    return typeToConvert.IsGenericType
+                                        && typeToConvert.GetGenericTypeDefinition() == typeof({{unboundIdentifierTypeReference}});
+                                }
+
+                                public override global::System.Text.Json.Serialization.JsonConverter CreateConverter(global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
+                                {
+                                    var converterType = typeof(IdentifierJsonConverter<>).MakeGenericType(typeToConvert);
+                                    return (global::System.Text.Json.Serialization.JsonConverter)global::System.Activator.CreateInstance(converterType)!;
+                                }
+
+                                private sealed class IdentifierJsonConverter<TIdentifier> : global::System.Text.Json.Serialization.JsonConverter<TIdentifier>
+                                    where TIdentifier : notnull
+                                {
+                                    private static readonly global::System.Reflection.MethodInfo CreateMethod =
+                                        typeof(TIdentifier).GetMethod(
+                                            "Create",
+                                            global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static,
+                                            binder: null,
+                                            types: new[] { typeof({{valueTypeReference}}) },
+                                            modifiers: null
+                                        ) ?? throw new global::System.InvalidOperationException("The generated identifier Create method could not be found.");
+
+                                    public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TIdentifier identifier, global::System.Text.Json.JsonSerializerOptions options)
+                                    {
+                                        var value = ((global::LightObjects.IValueObject<{{valueTypeReference}}, TIdentifier>)identifier).Value;
+                            """
+        );
+
+        if (declaredValueType == "Guid")
+            source.AppendLine("""            writer.WriteStringValue(value.ToString());""");
+        else if (declaredValueType == "string")
+            source.AppendLine("""            writer.WriteStringValue(value);""");
+        else
+            source.AppendLine("""            writer.WriteNumberValue(value);""");
+
+        source.AppendLine($$"""
+                                    }
+
+                                    public override TIdentifier Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
+                                    {
+                                        var value = reader.Get{{fullValueType}}();
+                            """
+        );
+
+        if (declaredValueType == "string" && !hasCustomValidation)
+            source.AppendLine("""
+                                      if (global::System.String.IsNullOrWhiteSpace(value))
+                                          throw new global::System.InvalidOperationException("The value must not be empty.");
+
+                              """
+            );
+
+        var jsonValueExpression = declaredValueType == "string" && hasCustomValidation ? "value!" : "value";
+        source.AppendLine($$"""
+                                        return Create({{jsonValueExpression}});
+                                    }
+
+                                    private static TIdentifier Create({{valueTypeReference}} value)
+                                    {
+                                        try
+                                        {
+                                            return (TIdentifier)CreateMethod.Invoke(null, new global::System.Object?[] { value })!;
+                                        }
+                                        catch (global::System.Reflection.TargetInvocationException exception) when (exception.InnerException is not null)
+                                        {
+                                            global::System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+                                            throw;
+                                        }
+                                    }
+                                }
+                            }
+
+                            """
+        );
     }
 
     private readonly record struct IdentifierResult

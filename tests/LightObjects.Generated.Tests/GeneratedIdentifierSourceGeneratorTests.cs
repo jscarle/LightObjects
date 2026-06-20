@@ -145,7 +145,32 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
         generatedSource.ShouldContain("global::LightObjects.ICreatableValueObject<int, TestGenericId<T>>");
         generatedSource.ShouldContain("where T : class");
         generatedSource.ShouldContain("public static TestGenericId<T> Create(int value)");
-        generatedSource.ShouldContain("public sealed class TestGenericIdTypeConverter<T>");
+        generatedSource.ShouldContain("[global::System.Text.Json.Serialization.JsonConverter(typeof(global::MyProject.Identifiers.LightObjectsGenerated_TestGenericId1JsonConverterFactory))]");
+        generatedSource.ShouldContain("internal sealed class LightObjectsGenerated_TestGenericId1JsonConverterFactory");
+        generatedSource.ShouldContain("typeToConvert.GetGenericTypeDefinition() == typeof(global::MyProject.Identifiers.TestGenericId<>)");
+        generatedSource.ShouldNotContain("TypeConverter(typeof(TestGenericIdTypeConverter<>))");
+    }
+
+    [Fact]
+    public void GenerateGenericIdentifier_WithNullableReferenceConstraint_ShouldPreserveConstraint()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 public readonly partial struct TestGenericId<T>
+                                     where T : class?;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+        var generatedSource = result.Result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestGenericId`1.g.cs", StringComparison.Ordinal))
+            .GetText()
+            .ToString();
+
+        generatedSource.ShouldContain("public readonly partial struct TestGenericId<T>");
+        generatedSource.ShouldContain("where T : class?");
+        generatedSource.ShouldNotContain("where T : class\n");
     }
 
     [Fact]
