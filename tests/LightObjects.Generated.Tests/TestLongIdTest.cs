@@ -19,20 +19,8 @@ public sealed class TestLongIdTest
         var id = TestLongId.Create(validValue);
 
         // Assert
-        id.ToInt64().ShouldBe(validValue);
-    }
-
-    [Fact(Skip = "No longer checking negative values.")]
-    public void Create_InvalidValue_ShouldThrowException()
-    {
-        // Arrange
-        const int invalidValue = -1;
-
-        // Act
-        Func<object?> create = () => TestLongId.Create(invalidValue);
-
-        // Assert
-        Should.Throw<ValueObjectException>(create);
+        id.ToInt64()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -45,22 +33,10 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryCreate(validValue);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt64().ShouldBe(validValue);
-    }
-
-    [Fact(Skip = "No longer checking negative values.")]
-    public void TryCreate_InvalidValue_ShouldFail()
-    {
-        // Arrange
-        const int invalidValue = -1;
-
-        // Act
-        var result = TestLongId.TryCreate(invalidValue);
-
-        // Assert
-        result.IsFailure().ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt64()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -73,7 +49,8 @@ public sealed class TestLongIdTest
         var result = TestLongId.Parse(validString);
 
         // Assert
-        result.ToInt64().ShouldBe(long.Parse(validString));
+        result.ToInt64()
+            .ShouldBe(long.Parse(validString));
     }
 
     [Theory]
@@ -97,8 +74,10 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryParse(validString);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt64().ShouldBe(long.Parse(validString));
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt64()
+            .ShouldBe(long.Parse(validString));
     }
 
     [Theory]
@@ -109,7 +88,8 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryParse(invalidString);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 

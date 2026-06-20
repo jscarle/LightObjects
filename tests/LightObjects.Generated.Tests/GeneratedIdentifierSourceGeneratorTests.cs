@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
-using Basic.Reference.Assemblies;
+using System.Text.RegularExpressions;
+using LightResults;
 using Microsoft.CodeAnalysis;
 using Shouldly;
 using SourceGeneratorTestHelpers;
@@ -26,9 +27,8 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var result = RunGenerator(sources);
-        await result.VerifyAsync("TestGuidId.g.cs")
-            .UseMethodName($"{nameof(GenerateGuidIdentifier)}_With{(withNamespace ? "" : "out")}Namespace");
+        var (_, result, _) = RunGenerator(sources);
+        await result.VerifyAsync("TestGuidId.g.cs");
     }
 
     [Theory]
@@ -43,9 +43,8 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var result = RunGenerator(sources);
-        await result.VerifyAsync("TestIntId.g.cs")
-            .UseMethodName($"{nameof(GenerateIntIdentifier)}_With{(withNamespace ? "" : "out")}Namespace");
+        var (_, result, _) = RunGenerator(sources);
+        await result.VerifyAsync("TestIntId.g.cs");
     }
 
     [Theory]
@@ -60,9 +59,8 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var result = RunGenerator(sources);
-        await result.VerifyAsync("TestLongId.g.cs")
-            .UseMethodName($"{nameof(GenerateLongIdentifier)}_With{(withNamespace ? "" : "out")}Namespace");
+        var (_, result, _) = RunGenerator(sources);
+        await result.VerifyAsync("TestLongId.g.cs");
     }
 
     [Theory]
@@ -77,9 +75,8 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var result = RunGenerator(sources);
-        await result.VerifyAsync("TestShortId.g.cs")
-            .UseMethodName($"{nameof(GenerateShortIdentifier)}_With{(withNamespace ? "" : "out")}Namespace");
+        var (_, result, _) = RunGenerator(sources);
+        await result.VerifyAsync("TestShortId.g.cs");
     }
 
     [Theory]
@@ -94,9 +91,8 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var result = RunGenerator(sources);
-        await result.VerifyAsync("TestStringId.g.cs")
-            .UseMethodName($"{nameof(GenerateStringIdentifier)}_With{(withNamespace ? "" : "out")}Namespace");
+        var (_, result, _) = RunGenerator(sources);
+        await result.VerifyAsync("TestStringId.g.cs");
     }
 
     [Fact]
@@ -112,10 +108,10 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
-        var generatedSource = result.Result.GeneratedTrees
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
             .Single(tree => tree.FilePath.EndsWith("Container.TestNestedId.g.cs", StringComparison.Ordinal))
-            .GetText()
+            .GetText(TestContext.Current.CancellationToken)
             .ToString();
 
         generatedSource.ShouldContain("public partial class Container");
@@ -135,21 +131,62 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
-        var generatedSource = result.Result.GeneratedTrees
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
             .Single(tree => tree.FilePath.EndsWith("TestGenericId`1.g.cs", StringComparison.Ordinal))
-            .GetText()
+            .GetText(TestContext.Current.CancellationToken)
             .ToString();
 
+        AssertPublicGeneratedMethodsHaveXmlDocs(generatedSource);
         generatedSource.ShouldContain("public readonly partial struct TestGenericId<T>");
         generatedSource.ShouldContain("global::LightObjects.ICreatableValueObject<int, TestGenericId<T>>");
         generatedSource.ShouldContain("where T : class");
         generatedSource.ShouldContain("public static TestGenericId<T> Create(int value)");
-        generatedSource.ShouldContain("[global::System.Text.Json.Serialization.JsonConverter(typeof(global::MyProject.Identifiers.LightObjectsGenerated_TestGenericId1JsonConverterFactory))]");
+        generatedSource.ShouldContain("""/// <summary>Creates a <see cref="TestGenericId{T}" /> from the specified value.</summary>""");
+        generatedSource.ShouldContain("""/// <summary>Compares this <see cref="TestGenericId{T}" /> value with another value of the same type.</summary>""");
+        generatedSource.ShouldContain(
+            """/// <exception cref="System.ArgumentException"><paramref name="obj" /> is not <c>null</c> and is not a <see cref="TestGenericId{T}" />.</exception>"""
+        );
+        generatedSource.ShouldContain("""<see cref="TestGenericId{T}" />""");
+        generatedSource.ShouldNotContain("""<see cref="TestGenericId" />""");
+        generatedSource.ShouldContain(
+            "[global::System.Text.Json.Serialization.JsonConverter(typeof(global::MyProject.Identifiers.LightObjectsGenerated_TestGenericId1JsonConverterFactory))]"
+        );
         generatedSource.ShouldContain("[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]");
         generatedSource.ShouldContain("internal sealed class LightObjectsGenerated_TestGenericId1JsonConverterFactory");
+        generatedSource.ShouldContain("""/// <summary>Provides JSON converters for generated identifier values.</summary>""");
+        generatedSource.ShouldContain("""/// <summary>Provides JSON conversion for <typeparamref name="TIdentifier" /> values.</summary>""");
+        generatedSource.ShouldContain("""/// <typeparam name="TIdentifier">The identifier type to convert.</typeparam>""");
         generatedSource.ShouldContain("typeToConvert.GetGenericTypeDefinition() == typeof(global::MyProject.Identifiers.TestGenericId<>)");
         generatedSource.ShouldNotContain("TypeConverter(typeof(TestGenericIdTypeConverter<>))");
+    }
+
+    [Fact]
+    public void GenerateGenericStringIdentifier_ShouldDocumentGenericTypeConverter()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<string>]
+                                 public sealed partial class TestGenericStringId<T>
+                                     where T : class;
+                                 """
+        );
+
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestGenericStringId`1.g.cs", StringComparison.Ordinal))
+            .GetText(TestContext.Current.CancellationToken)
+            .ToString();
+
+        AssertPublicGeneratedMethodsHaveXmlDocs(generatedSource);
+        generatedSource.ShouldContain("public sealed partial class TestGenericStringId<T>");
+        generatedSource.ShouldContain(
+            "[global::System.ComponentModel.TypeDescriptionProvider(typeof(global::MyProject.Identifiers.LightObjectsGenerated_TestGenericStringId1TypeDescriptionProvider))]"
+        );
+        generatedSource.ShouldContain("private sealed class IdentifierTypeConverter : global::System.ComponentModel.TypeConverter");
+        generatedSource.ShouldContain("""/// <summary>Provides type conversion for generated identifier values.</summary>""");
+        generatedSource.ShouldContain("""/// <summary>Provides JSON converters for generated identifier values.</summary>""");
+        generatedSource.ShouldContain("""/// <summary>Provides JSON conversion for <typeparamref name="TIdentifier" /> values.</summary>""");
     }
 
     [Fact]
@@ -163,10 +200,10 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
-        var generatedSource = result.Result.GeneratedTrees
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
             .Single(tree => tree.FilePath.EndsWith("TestGenericId`1.g.cs", StringComparison.Ordinal))
-            .GetText()
+            .GetText(TestContext.Current.CancellationToken)
             .ToString();
 
         generatedSource.ShouldContain("public readonly partial struct TestGenericId<T>");
@@ -184,12 +221,16 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
-        result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.Result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        var (_, result, diagnostics) = RunGenerator(sources);
+        diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty();
+        result.Diagnostics
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty();
 
-        var generatedSource = result.Result.GeneratedTrees
-            .Select(tree => tree.GetText().ToString())
+        var generatedSource = result.GeneratedTrees
+            .Select(tree => tree.GetText(TestContext.Current.CancellationToken).ToString()
+            )
             .Single(source => source.Contains("public readonly partial struct @event", StringComparison.Ordinal));
 
         generatedSource.ShouldContain("global::LightObjects.ICreatableValueObject<int, @event>");
@@ -211,12 +252,15 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
+        var (_, result, diagnostics) = RunGenerator(sources);
 
-        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0003");
+        var diagnostic = diagnostics.Single(diagnostic => diagnostic.Id == "LO0003");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldBe("Record identifiers are not supported. Declare 'MyProject.Identifiers.RecordId' as a partial class or struct instead.");
-        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("RecordId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+        diagnostic.GetMessage()
+            .ShouldBe("Record identifiers are not supported. Declare 'MyProject.Identifiers.RecordId' as a partial class or struct instead.");
+        result.GeneratedTrees
+            .Any(tree => tree.FilePath.EndsWith("RecordId.g.cs", StringComparison.Ordinal))
+            .ShouldBeFalse();
     }
 
     [Fact]
@@ -229,12 +273,15 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
+        var (_, result, diagnostics) = RunGenerator(sources);
 
-        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0004");
+        var diagnostic = diagnostics.Single(diagnostic => diagnostic.Id == "LO0004");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldBe("Ref struct identifiers are not supported because generated identifiers implement interfaces and use generic result/converter types");
-        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("RefId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+        diagnostic.GetMessage()
+            .ShouldBe("Ref struct identifiers are not supported because generated identifiers implement interfaces and use generic result/converter types");
+        result.GeneratedTrees
+            .Any(tree => tree.FilePath.EndsWith("RefId.g.cs", StringComparison.Ordinal))
+            .ShouldBeFalse();
     }
 
     [Fact]
@@ -247,12 +294,15 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
+        var (_, result, diagnostics) = RunGenerator(sources);
 
-        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0005");
+        var diagnostic = diagnostics.Single(diagnostic => diagnostic.Id == "LO0005");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldBe("File-local identifiers are not supported because generated partial declarations are emitted into a separate file");
-        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("FileId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+        diagnostic.GetMessage()
+            .ShouldBe("File-local identifiers are not supported because generated partial declarations are emitted into a separate file");
+        result.GeneratedTrees
+            .Any(tree => tree.FilePath.EndsWith("FileId.g.cs", StringComparison.Ordinal))
+            .ShouldBeFalse();
     }
 
     [Fact]
@@ -265,12 +315,15 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """
         );
 
-        var result = RunGenerator(sources);
+        var (_, result, diagnostics) = RunGenerator(sources);
 
-        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0002");
+        var diagnostic = diagnostics.Single(diagnostic => diagnostic.Id == "LO0002");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Warning);
-        diagnostic.GetMessage().ShouldBe("String identifiers must be declared as classes because default string-backed structs can contain a null value");
-        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("TestStringId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+        diagnostic.GetMessage()
+            .ShouldBe("String identifiers must be declared as classes because default string-backed structs can contain a null value");
+        result.GeneratedTrees
+            .Any(tree => tree.FilePath.EndsWith("TestStringId.g.cs", StringComparison.Ordinal))
+            .ShouldBeFalse();
     }
 
     [Fact]
@@ -289,27 +342,12 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                      }
                                  }
                                  """
-        ).Append("""
-                 namespace LightResults;
+        );
 
-                 public readonly struct Result
-                 {
-                     public static Result Success()
-                     {
-                         return default;
-                     }
-
-                     public static Result Failure(string message)
-                     {
-                         return default;
-                     }
-                 }
-                 """);
-
-        var result = RunGenerator(sources);
-        var generatedSource = result.Result.GeneratedTrees
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
             .Single(tree => tree.FilePath.EndsWith("TestIntId.g.cs", StringComparison.Ordinal))
-            .GetText()
+            .GetText(TestContext.Current.CancellationToken)
             .ToString();
 
         generatedSource.ShouldContain("var validation = Validate(value);");
@@ -330,22 +368,12 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                      }
                                  }
                                  """
-        ).Append("""
-                 namespace LightResults;
+        );
 
-                 public readonly struct Result
-                 {
-                     public static Result Success()
-                     {
-                         return default;
-                     }
-                 }
-                 """);
-
-        var result = RunGenerator(sources);
-        var generatedSource = result.Result.GeneratedTrees
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
             .Single(tree => tree.FilePath.EndsWith("TestStringId.g.cs", StringComparison.Ordinal))
-            .GetText()
+            .GetText(TestContext.Current.CancellationToken)
             .ToString();
 
         generatedSource.ShouldContain("var validation = Validate(value);");
@@ -356,60 +384,60 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
 
     public static IEnumerable<object[]> MismatchedCustomValidationSources()
     {
-        yield return new object[]
-        {
+        yield return
+        [
             """
             private static LightResults.Result validate(int value)
             {
                 return LightResults.Result.Success();
             }
-            """
-        };
-        yield return new object[]
-        {
+            """,
+        ];
+        yield return
+        [
             """
             public static LightResults.Result Validate(int value)
             {
                 return LightResults.Result.Success();
             }
-            """
-        };
-        yield return new object[]
-        {
+            """,
+        ];
+        yield return
+        [
             """
             private LightResults.Result Validate(int value)
             {
                 return LightResults.Result.Success();
             }
-            """
-        };
-        yield return new object[]
-        {
+            """,
+        ];
+        yield return
+        [
             """
             private static bool Validate(int value)
             {
                 return true;
             }
-            """
-        };
-        yield return new object[]
-        {
+            """,
+        ];
+        yield return
+        [
             """
             private static LightResults.Result Validate(long value)
             {
                 return LightResults.Result.Success();
             }
-            """
-        };
-        yield return new object[]
-        {
+            """,
+        ];
+        yield return
+        [
             """
             private static LightResults.Result Validate(int value, int other)
             {
                 return LightResults.Result.Success();
             }
-            """
-        };
+            """,
+        ];
     }
 
     [Theory]
@@ -417,29 +445,19 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
     public void GenerateIntIdentifier_WithMismatchedCustomValidation_ShouldGenerateDefaultValidation(string validationMethod)
     {
         var sources = GetSources($$"""
-                                  /// <summary>Represents an identifier.</summary>
-                                  [GeneratedIdentifier<int>]
-                                  public partial struct TestIntId
-                                  {
-                                      {{validationMethod}}
-                                  }
-                                  """
-        ).Append("""
-                 namespace LightResults;
+                                   /// <summary>Represents an identifier.</summary>
+                                   [GeneratedIdentifier<int>]
+                                   public partial struct TestIntId
+                                   {
+                                       {{validationMethod}}
+                                   }
+                                   """
+        );
 
-                 public readonly struct Result
-                 {
-                     public static Result Success()
-                     {
-                         return default;
-                     }
-                 }
-                 """);
-
-        var result = RunGenerator(sources);
-        var generatedSource = result.Result.GeneratedTrees
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
             .Single(tree => tree.FilePath.EndsWith("TestIntId.g.cs", StringComparison.Ordinal))
-            .GetText()
+            .GetText(TestContext.Current.CancellationToken)
             .ToString();
 
         generatedSource.ShouldContain("private static global::LightResults.Result Validate(int value)");
@@ -466,18 +484,66 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
 
                           {source}
                           """;
-        yield return """
-                     using System;
-
-                     namespace LightObjects.Generated;
-
-                     [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
-                     internal sealed class GeneratedIdentifierAttribute<TIdentifier> : Attribute;
-                     """;
     }
 
-    private static (ImmutableArray<Diagnostic> Diagnostics, GeneratorDriverRunResult Result) RunGenerator(IEnumerable<string> sources)
+    // ReSharper disable once UnusedTupleComponentInReturnValue
+    private static (GeneratedIdentifierSourceGenerator Generator, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) RunGenerator(
+        IEnumerable<string> sources
+    )
     {
-        return IncrementalGenerator.RunWithDiagnostics<GeneratedIdentifierSourceGenerator>(sources, metadataReferences: ReferenceAssemblies.Net80);
+        var metadataReferences = GetTargetFrameworkReferences()
+            .Append(MetadataReference.CreateFromFile(typeof(IValueObject<,>).Assembly.Location))
+            .Append(MetadataReference.CreateFromFile(typeof(Result).Assembly.Location));
+
+        return IncrementalGenerator.RunWithDiagnostics<GeneratedIdentifierSourceGenerator>(sources, metadataReferences: metadataReferences);
+    }
+
+    private static IEnumerable<MetadataReference> GetTargetFrameworkReferences()
+    {
+#if NET10_0
+        const string targetFramework = "net10.0";
+        const string versionPrefix = "10.";
+#elif NET9_0
+        const string targetFramework = "net9.0";
+        const string versionPrefix = "9.";
+#elif NET8_0
+        const string targetFramework = "net8.0";
+        const string versionPrefix = "8.";
+#else
+#error Unsupported test target framework.
+#endif
+
+        var runtimeDirectory = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+        var dotnetRoot = Path.GetFullPath(Path.Combine(runtimeDirectory, "..", "..", ".."));
+        var referencePackDirectory = Path.Combine(dotnetRoot, "packs", "Microsoft.NETCore.App.Ref");
+        var referencePackVersionDirectory = Directory.EnumerateDirectories(referencePackDirectory)
+            .Where(path => Path.GetFileName(path)
+                .StartsWith(versionPrefix, StringComparison.Ordinal)
+            )
+            .OrderByDescending(path => Version.Parse(Path.GetFileName(path)))
+            .First();
+
+        var referenceDirectory = Path.Combine(referencePackVersionDirectory, "ref", targetFramework);
+        return Directory.EnumerateFiles(referenceDirectory, "*.dll")
+            .Select(path => MetadataReference.CreateFromFile(path));
+    }
+
+    private static void AssertPublicGeneratedMethodsHaveXmlDocs(string generatedSource)
+    {
+        const string publicMethodPattern = @"(?m)^\s*public\s+(?:(?:static|override)\s+)?(?:[^\r\n(]+)\([^;\r\n]*\)\s*$";
+        var matches = Regex.Matches(generatedSource, publicMethodPattern);
+
+        foreach (Match match in matches)
+        {
+            var previousLineEnd = generatedSource.LastIndexOf('\n', match.Index - 1);
+            if (previousLineEnd < 0)
+                continue;
+
+            var previousLineStart = generatedSource.LastIndexOf('\n', previousLineEnd - 1);
+            var previousLine = generatedSource.Substring(previousLineStart + 1, previousLineEnd - previousLineStart - 1)
+                .Trim();
+
+            previousLine.ShouldStartWith("///");
+        }
     }
 }

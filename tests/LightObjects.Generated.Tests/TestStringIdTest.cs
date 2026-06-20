@@ -20,7 +20,8 @@ public sealed class TestStringIdTest
 
         // Assert
         id.ShouldNotBeNull();
-        id.ToString().ShouldBe(validValue);
+        id.ToString()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -46,9 +47,11 @@ public sealed class TestStringIdTest
         var result = TestStringId.TryCreate(validValue);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
         id.ShouldNotBeNull();
-        id.ToString().ShouldBe(validValue);
+        id.ToString()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -61,7 +64,8 @@ public sealed class TestStringIdTest
         var result = TestStringId.TryCreate(invalidValue);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 

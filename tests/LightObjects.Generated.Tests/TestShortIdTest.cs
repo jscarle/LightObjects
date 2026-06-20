@@ -19,20 +19,8 @@ public sealed class TestShortIdTest
         var id = TestShortId.Create(validValue);
 
         // Assert
-        id.ToInt16().ShouldBe(validValue);
-    }
-
-    [Fact(Skip = "No longer checking negative values.")]
-    public void Create_InvalidValue_ShouldThrowException()
-    {
-        // Arrange
-        const int invalidValue = -1;
-
-        // Act
-        Func<object?> create = () => TestShortId.Create(invalidValue);
-
-        // Assert
-        Should.Throw<ValueObjectException>(create);
+        id.ToInt16()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -45,22 +33,10 @@ public sealed class TestShortIdTest
         var result = TestShortId.TryCreate(validValue);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt16().ShouldBe(validValue);
-    }
-
-    [Fact(Skip = "No longer checking negative values.")]
-    public void TryCreate_InvalidValue_ShouldFail()
-    {
-        // Arrange
-        const int invalidValue = -1;
-
-        // Act
-        var result = TestShortId.TryCreate(invalidValue);
-
-        // Assert
-        result.IsFailure().ShouldBeTrue();
-        result.Errors.Count.ShouldBe(1);
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt16()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -73,7 +49,8 @@ public sealed class TestShortIdTest
         var result = TestShortId.Parse(validString);
 
         // Assert
-        result.ToInt16().ShouldBe(short.Parse(validString));
+        result.ToInt16()
+            .ShouldBe(short.Parse(validString));
     }
 
     [Theory]
@@ -97,8 +74,10 @@ public sealed class TestShortIdTest
         var result = TestShortId.TryParse(validString);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt16().ShouldBe(short.Parse(validString));
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt16()
+            .ShouldBe(short.Parse(validString));
     }
 
     [Theory]
@@ -109,7 +88,8 @@ public sealed class TestShortIdTest
         var result = TestShortId.TryParse(invalidString);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 

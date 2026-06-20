@@ -11,7 +11,10 @@ public static class TypeExtensions
         return type.IsValueObjectType(out _);
     }
 
-    public static bool IsValueObjectType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type type, [NotNullWhen(true)] out Type? valueObjectType)
+    public static bool IsValueObjectType(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type type,
+        [NotNullWhen(true)] out Type? valueObjectType
+    )
     {
         ArgumentNullException.ThrowIfNull(type);
 

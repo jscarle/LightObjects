@@ -12,7 +12,7 @@
 
 namespace MyProject.Identifiers;
 
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestIntIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestIntIdJsonConverter))]
 public readonly partial struct TestIntId :
@@ -34,7 +34,9 @@ public readonly partial struct TestIntId :
         _value = value;
     }
 
-    /// <inheritdoc />
+    /// <summary>Creates a <see cref="TestIntId" /> from the specified value.</summary>
+    /// <param name="value">The underlying value.</param>
+    /// <returns>A <see cref="TestIntId" /> that wraps <paramref name="value" />.</returns>
     public static TestIntId Create(int value)
     {
         var result = TryCreate(value);
@@ -44,7 +46,9 @@ public readonly partial struct TestIntId :
         throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
-    /// <inheritdoc />
+    /// <summary>Attempts to create a <see cref="TestIntId" /> from the specified value.</summary>
+    /// <param name="value">The underlying value.</param>
+    /// <returns>A result containing the created <see cref="TestIntId" />, or an error when <paramref name="value" /> is not valid.</returns>
     public static global::LightResults.Result<TestIntId> TryCreate(int value)
     {
         var validation = Validate(value);
@@ -55,7 +59,9 @@ public readonly partial struct TestIntId :
         return global::LightResults.Result.Success<TestIntId>(identifier);
     }
 
-    /// <inheritdoc />
+    /// <summary>Parses the specified string into a <see cref="TestIntId" />.</summary>
+    /// <param name="s">The string to parse.</param>
+    /// <returns>A <see cref="TestIntId" /> parsed from <paramref name="s" />.</returns>
     public static TestIntId Parse(global::System.String s)
     {
         var result = TryParse(s);
@@ -65,7 +71,9 @@ public readonly partial struct TestIntId :
         throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
-    /// <inheritdoc />
+    /// <summary>Attempts to parse the specified string into a <see cref="TestIntId" />.</summary>
+    /// <param name="s">The string to parse.</param>
+    /// <returns>A result containing the parsed <see cref="TestIntId" />, or an error when <paramref name="s" /> is not valid.</returns>
     public static global::LightResults.Result<TestIntId> TryParse(global::System.String s)
     {
         if (int.TryParse(s, out var value))
@@ -74,7 +82,10 @@ public readonly partial struct TestIntId :
         return global::LightResults.Result.Failure<TestIntId>("The string is not a valid identifier.");
     }
 
-    /// <inheritdoc />
+    /// <summary>Attempts to parse the specified string into a <see cref="TestIntId" />.</summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="identifier">When this method returns, contains the parsed identifier if parsing succeeded; otherwise, the default value.</param>
+    /// <returns><c>true</c> if <paramref name="s" /> was parsed successfully; otherwise, <c>false</c>.</returns>
     public static bool TryParse(global::System.String s, out TestIntId identifier)
     {
         if (int.TryParse(s, out var value))
@@ -84,7 +95,11 @@ public readonly partial struct TestIntId :
         return false;
     }
 
-    /// <inheritdoc />
+    /// <summary>Attempts to parse the specified string into a <see cref="TestIntId" /> using the specified format provider.</summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="provider">The format provider to use when parsing <paramref name="s" />.</param>
+    /// <param name="identifier">When this method returns, contains the parsed identifier if parsing succeeded; otherwise, the default value.</param>
+    /// <returns><c>true</c> if <paramref name="s" /> was parsed successfully; otherwise, <c>false</c>.</returns>
     public static bool TryParse(global::System.String s, global::System.IFormatProvider provider, out TestIntId identifier)
     {
         if (int.TryParse(s, provider, out var value))
@@ -112,31 +127,36 @@ public readonly partial struct TestIntId :
         return _value;
     }
 
-    /// <summary>Determines whether two instances of <see cref="TestIntId" /> are equal.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the instances are equal; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether two <see cref="TestIntId" /> values are equal.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if the values are equal; otherwise, <c>false</c>.</returns>
     public static bool operator ==(TestIntId left, TestIntId right)
     {
         return left.Equals(right);
     }
 
-    /// <summary>Determines whether two instances of <see cref="TestIntId" /> are not equal.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the instances are not equal; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether two <see cref="TestIntId" /> values are not equal.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if the values are not equal; otherwise, <c>false</c>.</returns>
     public static bool operator !=(TestIntId left, TestIntId right)
     {
         return !left.Equals(right);
     }
 
-    /// <inheritdoc />
+    /// <summary>Compares this <see cref="TestIntId" /> value with another value of the same type.</summary>
+    /// <param name="other">The other value to compare.</param>
+    /// <returns>A signed integer that is less than zero if this value is less than <paramref name="other" />, zero if the values are equal, or greater than zero if this value is greater than <paramref name="other" />.</returns>
     public int CompareTo(TestIntId other)
     {
         return _value.CompareTo(other._value);
     }
 
-    /// <inheritdoc />
+    /// <summary>Compares this <see cref="TestIntId" /> value with another object.</summary>
+    /// <param name="obj">The object to compare, or <c>null</c>.</param>
+    /// <returns>A signed integer that is less than zero if this value is less than <paramref name="obj" />, zero if the values are equal, or greater than zero if this value is greater than <paramref name="obj" />. A non-null value compares greater than <c>null</c>.</returns>
+    /// <exception cref="System.ArgumentException"><paramref name="obj" /> is not <c>null</c> and is not a <see cref="TestIntId" />.</exception>
     public int CompareTo(global::System.Object? obj)
     {
         if (global::System.Object.ReferenceEquals(null, obj))
@@ -144,50 +164,51 @@ public readonly partial struct TestIntId :
         return obj is TestIntId other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof(TestIntId)}.");
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestIntId" /> is less than the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is less than the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestIntId" /> value is less than the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is less than <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator <(TestIntId left, TestIntId right)
     {
         return left.CompareTo(right) < 0;
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestIntId" /> is greater than the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is greater than the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestIntId" /> value is greater than the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is greater than <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator >(TestIntId left, TestIntId right)
     {
         return left.CompareTo(right) > 0;
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestIntId" /> is less than or equal to the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is less than or equal to the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestIntId" /> value is less than or equal to the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is less than or equal to <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator <=(TestIntId left, TestIntId right)
     {
         return left.CompareTo(right) <= 0;
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestIntId" /> is greater than or equal to the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is greater than or equal to the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestIntId" /> value is greater than or equal to the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is greater than or equal to <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator >=(TestIntId left, TestIntId right)
     {
         return left.CompareTo(right) >= 0;
     }
 
-    /// <summary>Gets the underlying value of the <see cref="TestIntId" />.</summary>
-    /// <returns>The underlying value of the <see cref="TestIntId" />.</returns>
+    /// <summary>Returns the underlying value of the <see cref="TestIntId" />.</summary>
+    /// <returns>The underlying value.</returns>
     public int ToInt32()
     {
         return _value;
     }
 
-    /// <inheritdoc />
+    /// <summary>Returns the invariant-culture string representation of the underlying value.</summary>
+    /// <returns>The invariant-culture string representation of the underlying value.</returns>
     public override global::System.String ToString()
     {
         return _value.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
@@ -199,10 +220,12 @@ public readonly partial struct TestIntId :
     }
 }
 
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+/// <summary>Provides type conversion for <see cref="TestIntId" /> values.</summary>
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestIntIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
+    /// <inheritdoc />
     public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
     {
         return sourceType == typeof(global::System.String)
@@ -210,6 +233,7 @@ public sealed class TestIntIdTypeConverter : global::System.ComponentModel.TypeC
             || base.CanConvertFrom(context, sourceType);
     }
 
+    /// <inheritdoc />
     public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
     {
         if (value is int identifierValue)
@@ -222,16 +246,19 @@ public sealed class TestIntIdTypeConverter : global::System.ComponentModel.TypeC
     }
 }
 
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+/// <summary>Provides JSON conversion for <see cref="TestIntId" /> values.</summary>
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestIntIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestIntId>
 {
+    /// <inheritdoc />
     public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestIntId identifier, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = ((global::LightObjects.IValueObject<int, TestIntId>)identifier).Value;
         writer.WriteNumberValue(value);
     }
 
+    /// <inheritdoc />
     public override TestIntId Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = reader.GetInt32();

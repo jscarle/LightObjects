@@ -3,6 +3,24 @@
 /// <summary>Represents a declaration.</summary>
 internal sealed record Declaration
 {
+    /// <summary>Gets the type of declaration.</summary>
+    public DeclarationType Type { get; }
+
+    /// <summary>Gets the name of the declaration.</summary>
+    public string Name { get; }
+
+    /// <summary>Gets a read-only list of generic parameter names for generic declarations, or an empty list otherwise.</summary>
+    public EquatableImmutableArray<string> GenericParameters { get; }
+
+    /// <summary>Gets a read-only list of generic parameter constraint clauses, or an empty list if there are no constraints.</summary>
+    public EquatableImmutableArray<string> GenericParameterConstraints { get; }
+
+    /// <summary>Gets the declaration accessibility keyword, or an empty string if not applicable.</summary>
+    public string Accessibility { get; }
+
+    /// <summary>Gets a value indicating whether the declaration is static.</summary>
+    public bool IsStatic { get; }
+
     /// <summary>Initializes a new instance of the <see cref="Declaration"/> class with the specified type, name, and generic parameters.</summary>
     /// <param name="type">The type of declaration.</param>
     /// <param name="name">The name of the declaration.</param>
@@ -26,24 +44,6 @@ internal sealed record Declaration
         Accessibility = accessibility;
         IsStatic = isStatic;
     }
-
-    /// <summary>Gets the type of declaration.</summary>
-    public DeclarationType Type { get; }
-
-    /// <summary>Gets the name of the declaration.</summary>
-    public string Name { get; }
-
-    /// <summary>Gets a read-only list of generic parameter names for generic declarations, or an empty list otherwise.</summary>
-    public EquatableImmutableArray<string> GenericParameters { get; }
-
-    /// <summary>Gets a read-only list of generic parameter constraint clauses, or an empty list if there are no constraints.</summary>
-    public EquatableImmutableArray<string> GenericParameterConstraints { get; }
-
-    /// <summary>Gets the declaration accessibility keyword, or an empty string if not applicable.</summary>
-    public string Accessibility { get; }
-
-    /// <summary>Gets a value indicating whether the declaration is static.</summary>
-    public bool IsStatic { get; }
 
     /// <summary>Returns a string representation of the declaration in the appropriate format for its type.</summary>
     /// <returns>A string representation of the declaration.</returns>

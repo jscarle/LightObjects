@@ -10,7 +10,8 @@ public sealed class TestValidatedIntIdTest
     {
         var id = TestValidatedIntId.Create(42);
 
-        id.ToInt32().ShouldBe(42);
+        id.ToInt32()
+            .ShouldBe(42);
     }
 
     [Fact]
@@ -27,7 +28,8 @@ public sealed class TestValidatedIntIdTest
     {
         var result = TestValidatedIntId.TryCreate(0);
 
-        result.IsFailure(out var error).ShouldBeTrue();
+        result.IsFailure(out var error)
+            .ShouldBeTrue();
         error.Message.ShouldBe("The value must be greater than zero.");
     }
 
@@ -36,7 +38,8 @@ public sealed class TestValidatedIntIdTest
     {
         var result = TestValidatedIntId.TryParse("0");
 
-        result.IsFailure(out var error).ShouldBeTrue();
+        result.IsFailure(out var error)
+            .ShouldBeTrue();
         error.Message.ShouldBe("The value must be greater than zero.");
     }
 }
