@@ -18,13 +18,18 @@
     <!-- References -->
     <ItemGroup>
         <PackageReference Include="LightResults" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" PrivateAssets="all" GeneratePathProperty="true"/>
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+        <ProjectReference Include="..\LightObjects.Generated\LightObjects.Generated.csproj"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          SetTargetFramework="TargetFramework=netstandard2.0"/>
     </ItemGroup>
 
     <!-- Output -->
     <PropertyGroup>
         <AssemblyName>LightObjects</AssemblyName>
-        <Version>10.0.0-preview.1</Version>
+        <Version>10.0.0</Version>
         <AssemblyVersion>10.0.0.0</AssemblyVersion>
         <FileVersion>10.0.0.0</FileVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
@@ -56,6 +61,8 @@
         <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false"/>
         <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" Visible="false"/>
         <None Include="..\..\Icon.png" Pack="true" PackagePath="\" Visible="false"/>
+        <None Include="..\LightObjects.Generated\bin\$(Configuration)\netstandard2.0\LightObjects.Generated.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
+        <None Include="$(NuGetPackageRoot)microsoft.bcl.hashcode\6.0.0\lib\netstandard2.0\Microsoft.Bcl.HashCode.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
     </ItemGroup>
 
     <!-- Testing -->

@@ -3,6 +3,7 @@ using System.Text;
 using LightObjects.Generated.Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 namespace LightObjects.Generated;
@@ -10,17 +11,53 @@ namespace LightObjects.Generated;
 [Generator]
 public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 {
-    private sealed record IdentifierTransformResult(Identifier? Identifier, Diagnostic? Diagnostic);
-
     private const string AttributesNamespace = "LightObjects.Generated";
     private const string GeneratedIdentifierAttributeName = "GeneratedIdentifierAttribute";
     private const string GeneratedIdentifierAttributeFullyQualifiedName = $"{AttributesNamespace}.{GeneratedIdentifierAttributeName}`1";
     private const string GeneratedIdentifierAttributeHint = $"{GeneratedIdentifierAttributeFullyQualifiedName}.g.cs";
+    private const string ExcludeFromCodeCoverageAttribute = "[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]";
+    private static readonly string GeneratedCodeAttribute = $"""[global::System.CodeDom.Compiler.GeneratedCodeAttribute("{typeof(GeneratedIdentifierSourceGenerator).FullName}", "{typeof(GeneratedIdentifierSourceGenerator).Assembly.GetName().Version}")]""";
 
     private static readonly DiagnosticDescriptor UnsupportedIdentifierTypeDiagnostic = new(
         id: "LO0001",
         title: "Unsupported identifier type",
         messageFormat: "'{0}' is not a supported identifier type. Only short, int, long, string, or System.Guid are allowed.",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor StringIdentifierStructDiagnostic = new(
+        id: "LO0002",
+        title: "String identifiers must be classes",
+        messageFormat: "String identifiers must be declared as classes because default string-backed structs can contain a null value",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor RecordIdentifierDiagnostic = new(
+        id: "LO0003",
+        title: "Record identifiers are not supported",
+        messageFormat: "Record identifiers are not supported. Declare '{0}' as a partial class or struct instead.",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor RefStructIdentifierDiagnostic = new(
+        id: "LO0004",
+        title: "Ref struct identifiers are not supported",
+        messageFormat: "Ref struct identifiers are not supported because generated identifiers implement interfaces and use generic result/converter types",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor FileLocalIdentifierDiagnostic = new(
+        id: "LO0005",
+        title: "File-local identifiers are not supported",
+        messageFormat: "File-local identifiers are not supported because generated partial declarations are emitted into a separate file",
         category: "LightObjects.Generated",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -55,8 +92,6 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         var source = $"""
                       {FileHeader}
 
-                      using System;
-
                       namespace {AttributesNamespace};
 
                       /// <summary>
@@ -66,8 +101,10 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                       /// <typeparam name="TIdentifier">
                       /// The underlying type to use as the strongly typed identifier.
                       /// </typeparam>
+                      {GeneratedCodeAttribute}
+                      {ExcludeFromCodeCoverageAttribute}
                       [global::System.AttributeUsage(global::System.AttributeTargets.Struct | global::System.AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-                      internal sealed class {GeneratedIdentifierAttributeName}<TIdentifier> : Attribute;
+                      internal sealed class {GeneratedIdentifierAttributeName}<TIdentifier> : global::System.Attribute;
                       """;
         context.AddSource(GeneratedIdentifierAttributeHint, SourceText.From(source, Encoding.UTF8));
     }
@@ -76,24 +113,35 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return syntaxNode.IsKind(SyntaxKind.StructDeclaration) || syntaxNode.IsKind(SyntaxKind.ClassDeclaration);
+        return syntaxNode is TypeDeclarationSyntax;
     }
 
-    private static IdentifierTransformResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
+    private static IdentifierResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (context.TargetSymbol is not INamedTypeSymbol namedTypeSymbol)
-            return new IdentifierTransformResult(null, null);
+            return new IdentifierResult();
+
+        if (context.TargetNode is TypeDeclarationSyntax { Modifiers: var modifiers } && modifiers.Any(static modifier => modifier.IsKind(SyntaxKind.FileKeyword)))
+            return new IdentifierResult { Diagnostic = CreateDiagnostic(FileLocalIdentifierDiagnostic, context, cancellationToken) };
+
+        if (namedTypeSymbol.IsRecord)
+            return new IdentifierResult { Diagnostic = CreateDiagnostic(RecordIdentifierDiagnostic, context, cancellationToken, namedTypeSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)) };
+
+        if (namedTypeSymbol.IsRefLikeType)
+            return new IdentifierResult { Diagnostic = CreateDiagnostic(RefStructIdentifierDiagnostic, context, cancellationToken) };
 
         var containingDeclarations = namedTypeSymbol.GetContainingDeclarations(cancellationToken);
-        var symbolName = namedTypeSymbol.Name;
+        var symbolName = namedTypeSymbol.Name.ToEscapedIdentifier();
+        var genericParameters = namedTypeSymbol.GetGenericTypeParameters(cancellationToken);
+        var genericParameterConstraints = namedTypeSymbol.GetGenericTypeParameterConstraints(cancellationToken);
         var isStruct = namedTypeSymbol.TypeKind == TypeKind.Struct;
-        var isPublic = namedTypeSymbol.DeclaredAccessibility == Accessibility.Public;
+        var accessibility = namedTypeSymbol.DeclaredAccessibility.ToKeyword();
 
         var attribute = context.Attributes[0].AttributeClass!;
         if (attribute.TypeArguments.Length != 1)
-            return new IdentifierTransformResult(null, null);
+            return new IdentifierResult();
 
         var typeArgument = attribute.TypeArguments[0];
 
@@ -120,18 +168,22 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             case SpecialType.System_String:
                 declaredValueType = "string";
                 fullValueType = "String";
+                if (isStruct)
+                {
+                    var diagnostic = CreateDiagnostic(StringIdentifierStructDiagnostic, context, cancellationToken);
+                    return new IdentifierResult { Diagnostic = diagnostic };
+                }
                 break;
             default:
                 if (typeArgument is not { Name: "Guid", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } })
                 {
-                    var attributeSyntax = context.Attributes[0].ApplicationSyntaxReference?.GetSyntax(cancellationToken);
-                    var location = attributeSyntax?.GetLocation() ?? context.TargetNode.GetLocation();
-                    var diagnostic = Diagnostic.Create(
+                    var diagnostic = CreateDiagnostic(
                         UnsupportedIdentifierTypeDiagnostic,
-                        location,
+                        context,
+                        cancellationToken,
                         typeArgument.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
                     );
-                    return new IdentifierTransformResult(null, diagnostic);
+                    return new IdentifierResult { Diagnostic = diagnostic };
                 }
 
                 declaredValueType = "Guid";
@@ -139,27 +191,70 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 break;
         }
 
-        var symbol = new Identifier(
-            containingDeclarations,
-            symbolName,
-            isStruct,
-            isPublic,
-            declaredValueType,
-            fullValueType,
-            supportsProviderBasedTryParse
-        );
+        var symbol = new Identifier
+        {
+            ContainingDeclarations = containingDeclarations,
+            Name = symbolName,
+            GenericParameters = genericParameters,
+            GenericParameterConstraints = genericParameterConstraints,
+            IsStruct = isStruct,
+            Accessibility = accessibility,
+            DeclaredValueType = declaredValueType,
+            FullValueType = fullValueType,
+            SupportsProviderBasedTryParse = supportsProviderBasedTryParse,
+            HasCustomValidation = HasCustomValidationMethod(
+                namedTypeSymbol,
+                typeArgument,
+                context.SemanticModel.Compilation.GetTypeByMetadataName("LightResults.Result")
+            )
+        };
 
-        return new IdentifierTransformResult(symbol, null);
+        return new IdentifierResult { Value = symbol };
     }
 
-    private static void GenerateIdentifier(SourceProductionContext context, ImmutableArray<IdentifierTransformResult> generatedIdentifiers)
+    private static Diagnostic CreateDiagnostic(DiagnosticDescriptor descriptor, GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken, params object[] messageArgs)
+    {
+        var attributeSyntax = context.Attributes[0].ApplicationSyntaxReference?.GetSyntax(cancellationToken);
+        var location = attributeSyntax?.GetLocation() ?? context.TargetNode.GetLocation();
+        return Diagnostic.Create(descriptor, location, messageArgs);
+    }
+
+    private static bool HasCustomValidationMethod(INamedTypeSymbol namedTypeSymbol, ITypeSymbol valueType, INamedTypeSymbol? resultType)
+    {
+        if (resultType is null)
+            return false;
+
+        foreach (var member in namedTypeSymbol.GetMembers("Validate"))
+        {
+            if (member is not IMethodSymbol method)
+                continue;
+
+            if (method is
+                {
+                    MethodKind: MethodKind.Ordinary,
+                    DeclaredAccessibility: Accessibility.Private,
+                    IsStatic: true,
+                    Arity: 0,
+                    Parameters: [{ RefKind: RefKind.None }]
+                }
+                && SymbolEqualityComparer.Default.Equals(method.ReturnType, resultType)
+                && SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, valueType))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void GenerateIdentifier(SourceProductionContext context, ImmutableArray<IdentifierResult> generatedIdentifiers)
     {
         foreach (var result in generatedIdentifiers)
         {
             if (result.Diagnostic is { } diagnostic)
                 context.ReportDiagnostic(diagnostic);
 
-            var symbol = result.Identifier;
+            var symbol = result.Value;
             if (!symbol.HasValue)
                 continue;
 
@@ -167,12 +262,36 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
             var symbolNamespace = identifier.ContainingDeclarations.ToNamespace();
             var symbolName = identifier.Name;
+            var genericParameters = identifier.GenericParameters;
+            var genericParameterConstraints = identifier.GenericParameterConstraints;
+            var genericParameterList = genericParameters.ToGenericParameterList();
+            var genericParameterConstraintList = genericParameterConstraints.ToIndentedGenericConstraintList();
+            var unboundGenericParameterList = genericParameters.ToUnboundGenericParameterList();
+            var symbolReferenceName = $"{symbolName}{genericParameterList}";
+            var converterName = $"{symbolName}TypeConverter{genericParameterList}";
+            var jsonConverterName = $"{symbolName}JsonConverter{genericParameterList}";
+            var converterTypeOfName = $"{symbolName}TypeConverter{unboundGenericParameterList}";
+            var jsonConverterTypeOfName = $"{symbolName}JsonConverter{unboundGenericParameterList}";
+            var hasGenericContext = HasGenericContext(identifier);
+            var genericContextHelperName = ToGenericContextHelperName(identifier);
+            var typeDescriptionProviderName = $"{genericContextHelperName}TypeDescriptionProvider";
+            var jsonConverterFactoryName = $"{genericContextHelperName}JsonConverterFactory";
+            var typeDescriptionProviderTypeOfName = ToFullyQualifiedTypeReference(symbolNamespace, typeDescriptionProviderName);
+            var jsonConverterFactoryTypeOfName = ToFullyQualifiedTypeReference(symbolNamespace, jsonConverterFactoryName);
+            var unboundIdentifierTypeReference = ToFullyQualifiedUnboundTypeReference(identifier);
             var isStruct = identifier.IsStruct;
-            var isPublic = identifier.IsPublic;
+            var accessibility = identifier.Accessibility;
             var declaredValueType = identifier.DeclaredValueType;
+            var valueTypeReference = declaredValueType switch
+            {
+                "Guid" => "global::System.Guid",
+                "string" => "global::System.String",
+                _ => declaredValueType,
+            };
             var fullValueType = identifier.FullValueType;
 
             var supportsProviderBasedTryParse = identifier.SupportsProviderBasedTryParse;
+            var hasCustomValidation = identifier.HasCustomValidation;
 
             var source = new StringBuilder();
 
@@ -189,13 +308,6 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
                                #nullable enable
 
-                               using System.ComponentModel;
-                               using System.Globalization;
-                               using System.Text.Json;
-                               using System.Text.Json.Serialization;
-                               using LightResults;
-                               using LightObjects;
-
                                """
             );
 
@@ -206,41 +318,73 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                    """
                 );
 
+            var containingTypeCount = 0;
+            foreach (var declaration in identifier.ContainingDeclarations)
+            {
+                if (declaration.Type == DeclarationType.Namespace)
+                    continue;
+
+                source.AppendLine(declaration.ToPartialDeclaration());
+                source.AppendLine("{");
+                source.AppendLine();
+                containingTypeCount++;
+            }
+
+            source.AppendLine(GeneratedCodeAttribute);
+
+            if (hasGenericContext)
+            {
+                if (!isStruct)
+                    source.AppendLine($$"""
+                                        [global::System.ComponentModel.TypeDescriptionProvider(typeof({{typeDescriptionProviderTypeOfName}}))]
+                                        """
+                    );
+
+                source.AppendLine($$"""
+                                    [global::System.Text.Json.Serialization.JsonConverter(typeof({{jsonConverterFactoryTypeOfName}}))]
+                                    """
+                );
+            }
+            else
+                source.AppendLine($$"""
+                                    [global::System.ComponentModel.TypeConverter(typeof({{converterTypeOfName}}))]
+                                    [global::System.Text.Json.Serialization.JsonConverter(typeof({{jsonConverterTypeOfName}}))]
+                                    """
+                );
+
             source.AppendLine($$"""
-                                [TypeConverter(typeof({{symbolName}}TypeConverter))]
-                                [JsonConverter(typeof({{symbolName}}JsonConverter))]
-                                {{(isPublic ? "public" : "internal")}} {{(isStruct ? "readonly" : "sealed")}} partial {{(isStruct ? "struct" : "class")}} {{symbolName}} :
-                                    ICreatableValueObject<{{declaredValueType}}, {{symbolName}}>,
+                                {{accessibility}} {{(isStruct ? "readonly" : "sealed")}} partial {{(isStruct ? "struct" : "class")}} {{symbolReferenceName}} :
+                                    global::LightObjects.ICreatableValueObject<{{valueTypeReference}}, {{symbolReferenceName}}>,
                                 """
             );
 
             if (declaredValueType != "string")
                 source.AppendLine($$"""
-                                        IParsableValueObject<{{symbolName}}>,
+                                        global::LightObjects.IParsableValueObject<{{symbolReferenceName}}>,
                                     """
                 );
 
             source.AppendLine($$"""
-                                    IValueObject<{{declaredValueType}}, {{symbolName}}>,
-                                    IComparable<{{symbolName}}>,
-                                    IComparable
+                                    global::LightObjects.IValueObject<{{valueTypeReference}}, {{symbolReferenceName}}>,
+                                    global::System.IComparable<{{symbolReferenceName}}>,
+                                    global::System.IComparable{{genericParameterConstraintList}}
                                 {
                                 """
             );
 
             source.AppendLine($"""
-                                   {declaredValueType} IValueObject<{declaredValueType}, {symbolName}>.Value => _value;
+                                   {valueTypeReference} global::LightObjects.IValueObject<{valueTypeReference}, {symbolReferenceName}>.Value => _value;
                                
-                                   private readonly {declaredValueType} _value;
+                                   private readonly {valueTypeReference} _value;
 
                                """
             );
 
             source.AppendLine($$"""
-                                    private {{symbolName}}({{declaredValueType}} value, bool skipValidation = false)
+                                    private {{symbolName}}({{valueTypeReference}} value, bool skipValidation = false)
                                     {
                                         if (!skipValidation)
-                                            ValueObjectException.ThrowIfFailed(Validate(value));
+                                            global::LightObjects.ValueObjectException.ThrowIfFailed(Validate(value));
                                 
                                         _value = value;
                                     }
@@ -250,13 +394,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
             source.AppendLine($$"""
                                     /// <inheritdoc />
-                                    public static {{symbolName}} Create({{declaredValueType}} value)
+                                    public static {{symbolReferenceName}} Create({{valueTypeReference}} value)
                                     {
                                         var result = TryCreate(value);
                                         if (result.IsSuccess(out var identifier, out var error))
                                             return identifier;
                                 
-                                        throw new ValueObjectException(error.Message);
+                                        throw new global::LightObjects.ValueObjectException(error.Message);
                                     }
 
                                 """
@@ -264,14 +408,14 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
             source.AppendLine($$"""
                                     /// <inheritdoc />
-                                    public static Result<{{symbolName}}> TryCreate({{declaredValueType}} value)
+                                    public static global::LightResults.Result<{{symbolReferenceName}}> TryCreate({{valueTypeReference}} value)
                                     {
                                         var validation = Validate(value);
                                         if (validation.IsFailure(out var error))
-                                            return Result.Failure<{{symbolName}}>(error);
+                                            return global::LightResults.Result.Failure<{{symbolReferenceName}}>(error);
                                 
-                                        var identifier = new {{symbolName}}(value, true);
-                                        return Result.Success<{{symbolName}}>(identifier);
+                                        var identifier = new {{symbolReferenceName}}(value, true);
+                                        return global::LightResults.Result.Success<{{symbolReferenceName}}>(identifier);
                                     }
 
                                 """
@@ -281,13 +425,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             {
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public static {{symbolName}} Parse(string s)
+                                        public static {{symbolReferenceName}} Parse(global::System.String s)
                                         {
                                             var result = TryParse(s);
                                             if (result.IsSuccess(out var identifier, out var error))
                                                 return identifier;
                                     
-                                            throw new ValueObjectException(error.Message);
+                                            throw new global::LightObjects.ValueObjectException(error.Message);
                                         }
 
                                     """
@@ -295,12 +439,12 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public static Result<{{symbolName}}> TryParse(string s)
+                                        public static global::LightResults.Result<{{symbolReferenceName}}> TryParse(global::System.String s)
                                         {
-                                            if ({{declaredValueType}}.TryParse(s, out var value))
+                                            if ({{valueTypeReference}}.TryParse(s, out var value))
                                                 return TryCreate(value);
-                                    
-                                            return Result.Failure<{{symbolName}}>("The string is not a valid identifier.");
+
+                                            return global::LightResults.Result.Failure<{{symbolReferenceName}}>("The string is not a valid identifier.");
                                         }
 
                                     """
@@ -308,9 +452,9 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public static bool TryParse(string s, out {{symbolName}} identifier)
+                                        public static bool TryParse(global::System.String s, out {{symbolReferenceName}} identifier)
                                         {
-                                            if ({{declaredValueType}}.TryParse(s, out var value))
+                                            if ({{valueTypeReference}}.TryParse(s, out var value))
                                                 return TryCreate(value).IsSuccess(out identifier);
                                     
                                             identifier = default;
@@ -324,9 +468,9 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 {
                     source.AppendLine($$"""
                                             /// <inheritdoc />
-                                            public static bool TryParse(string s, IFormatProvider provider, out {{symbolName}} identifier)
+                                            public static bool TryParse(global::System.String s, global::System.IFormatProvider provider, out {{symbolReferenceName}} identifier)
                                             {
-                                                if ({{declaredValueType}}.TryParse(s, provider, out var value))
+                                                if ({{valueTypeReference}}.TryParse(s, provider, out var value))
                                                     return TryCreate(value).IsSuccess(out identifier);
 
                                                 identifier = default;
@@ -341,10 +485,10 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             if (isStruct)
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public bool Equals({{symbolName}} other)
+                                        public bool Equals({{symbolReferenceName}} other)
                                         {
                                             return {{(declaredValueType is "string" ?
-                                                "string.Equals(_value, other._value, StringComparison.Ordinal)" :
+                                                "global::System.String.Equals(_value, other._value, global::System.StringComparison.Ordinal)" :
                                                 "_value.Equals(other._value)")}};
                                         }
 
@@ -353,14 +497,14 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             else
                 source.AppendLine($$"""
                                       /// <inheritdoc />
-                                      public bool Equals({{symbolName}}? other)
+                                      public bool Equals({{symbolReferenceName}}? other)
                                       {
                                           if (other is null)
                                               return false;
-                                          if (ReferenceEquals(this, other))
+                                          if (global::System.Object.ReferenceEquals(this, other))
                                               return true;
                                           return {{(declaredValueType is "string" ?
-                                              "string.Equals(_value, other._value, StringComparison.Ordinal)" :
+                                              "global::System.String.Equals(_value, other._value, global::System.StringComparison.Ordinal)" :
                                               "_value.Equals(other._value)")}};
                                       }
 
@@ -370,9 +514,9 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             if (isStruct)
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public override bool Equals(object? obj)
+                                        public override bool Equals(global::System.Object? obj)
                                         {
-                                            return obj is {{symbolName}} other && Equals(other);
+                                            return obj is {{symbolReferenceName}} other && Equals(other);
                                         }
 
                                     """
@@ -380,13 +524,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             else
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public override bool Equals(object? obj)
+                                        public override bool Equals(global::System.Object? obj)
                                         {
                                             if (obj is null)
                                                 return false;
-                                            if (ReferenceEquals(this, obj))
+                                            if (global::System.Object.ReferenceEquals(this, obj))
                                                 return true;
-                                            return obj is {{symbolName}} other && Equals(other);
+                                            return obj is {{symbolReferenceName}} other && Equals(other);
                                         }
 
                                     """
@@ -398,7 +542,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                       public override int GetHashCode()
                                       {
                                           return {{(declaredValueType is "string" ?
-                                                  "StringComparer.Ordinal.GetHashCode(_value)" :
+                                                  "global::System.StringComparer.Ordinal.GetHashCode(_value)" :
                                                   "_value.GetHashCode()")}};
                                       }
 
@@ -421,7 +565,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the instances are equal; otherwise, <c>false</c>.</returns>
-                                        public static bool operator ==({{symbolName}} left, {{symbolName}} right)
+                                        public static bool operator ==({{symbolReferenceName}} left, {{symbolReferenceName}} right)
                                         {
                                             return left.Equals(right);
                                         }
@@ -434,13 +578,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the instances are equal; otherwise, <c>false</c>.</returns>
-                                        public static bool operator ==({{symbolName}}? left, {{symbolName}}? right)
+                                        public static bool operator ==({{symbolReferenceName}}? left, {{symbolReferenceName}}? right)
                                         {
                                             if (left is null && right is null)
                                                 return true;
                                             if (left is null || right is null)
                                                 return false;
-                                            if (ReferenceEquals(left, right))
+                                            if (global::System.Object.ReferenceEquals(left, right))
                                                 return true;
                                             return left.Equals(right);
                                         }
@@ -454,7 +598,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the instances are not equal; otherwise, <c>false</c>.</returns>
-                                        public static bool operator !=({{symbolName}} left, {{symbolName}} right)
+                                        public static bool operator !=({{symbolReferenceName}} left, {{symbolReferenceName}} right)
                                         {
                                             return !left.Equals(right);
                                         }
@@ -467,13 +611,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the instances are not equal; otherwise, <c>false</c>.</returns>
-                                        public static bool operator !=({{symbolName}}? left, {{symbolName}}? right)
+                                        public static bool operator !=({{symbolReferenceName}}? left, {{symbolReferenceName}}? right)
                                         {
                                             if (left is null && right is null)
                                                 return false;
                                             if (left is null || right is null)
                                                 return true;
-                                            if (ReferenceEquals(left, right))
+                                            if (global::System.Object.ReferenceEquals(left, right))
                                                 return false;
                                             return !left.Equals(right);
                                         }
@@ -484,7 +628,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             if (isStruct)
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public int CompareTo({{symbolName}} other)
+                                        public int CompareTo({{symbolReferenceName}} other)
                                         {
                                             return _value.CompareTo(other._value);
                                         }
@@ -494,14 +638,14 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             else
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public int CompareTo({{symbolName}}? other)
+                                        public int CompareTo({{symbolReferenceName}}? other)
                                         {
                                             if (other is null)
                                                 return 1;
-                                            if (ReferenceEquals(this, other))
+                                            if (global::System.Object.ReferenceEquals(this, other))
                                                 return 0;
                                             return {{(declaredValueType is "string" ?
-                                                "string.Compare(_value, other._value, StringComparison.Ordinal)" :
+                                                "global::System.String.Compare(_value, other._value, global::System.StringComparison.Ordinal)" :
                                                 "_value.CompareTo(other._value)")}};
                                         }
 
@@ -511,11 +655,11 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             if (isStruct)
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public int CompareTo(object? obj)
+                                        public int CompareTo(global::System.Object? obj)
                                         {
-                                            if (ReferenceEquals(null, obj))
+                                            if (global::System.Object.ReferenceEquals(null, obj))
                                                 return 1;
-                                            return obj is {{symbolName}} other ? CompareTo(other) : throw new ArgumentException($"Object must be of type {nameof({{symbolName}})}.");
+                                            return obj is {{symbolReferenceName}} other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof({{symbolReferenceName}})}.");
                                         }
 
                                     """
@@ -523,13 +667,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             else
                 source.AppendLine($$"""
                                         /// <inheritdoc />
-                                        public int CompareTo(object? obj)
+                                        public int CompareTo(global::System.Object? obj)
                                         {
                                             if (obj is null)
                                                 return 1;
-                                            if (ReferenceEquals(this, obj))
+                                            if (global::System.Object.ReferenceEquals(this, obj))
                                                 return 0;
-                                            return obj is {{symbolName}} other ? CompareTo(other) : throw new ArgumentException($"Object must be of type {nameof({{symbolName}})}.");
+                                            return obj is {{symbolReferenceName}} other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof({{symbolReferenceName}})}.");
                                         }
 
                                     """
@@ -541,7 +685,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is less than the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator <({{symbolName}} left, {{symbolName}} right)
+                                        public static bool operator <({{symbolReferenceName}} left, {{symbolReferenceName}} right)
                                         {
                                             return left.CompareTo(right) < 0;
                                         }
@@ -554,7 +698,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is less than the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator <({{symbolName}}? left, {{symbolName}}? right)
+                                        public static bool operator <({{symbolReferenceName}}? left, {{symbolReferenceName}}? right)
                                         {
                                             if (left is null)
                                                 return (right is null ? 0 : -1) < 0;
@@ -570,7 +714,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is greater than the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator >({{symbolName}} left, {{symbolName}} right)
+                                        public static bool operator >({{symbolReferenceName}} left, {{symbolReferenceName}} right)
                                         {
                                             return left.CompareTo(right) > 0;
                                         }
@@ -583,7 +727,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is greater than the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator >({{symbolName}}? left, {{symbolName}}? right)
+                                        public static bool operator >({{symbolReferenceName}}? left, {{symbolReferenceName}}? right)
                                         {
                                             if (left is null)
                                                 return false;
@@ -599,7 +743,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is less than or equal to the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator <=({{symbolName}} left, {{symbolName}} right)
+                                        public static bool operator <=({{symbolReferenceName}} left, {{symbolReferenceName}} right)
                                         {
                                             return left.CompareTo(right) <= 0;
                                         }
@@ -612,7 +756,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is less than or equal to the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator <=({{symbolName}}? left, {{symbolName}}? right)
+                                        public static bool operator <=({{symbolReferenceName}}? left, {{symbolReferenceName}}? right)
                                         {
                                             if (left is null)
                                                 return true;
@@ -628,7 +772,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is greater than or equal to the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator >=({{symbolName}} left, {{symbolName}} right)
+                                        public static bool operator >=({{symbolReferenceName}} left, {{symbolReferenceName}} right)
                                         {
                                             return left.CompareTo(right) >= 0;
                                         }
@@ -641,7 +785,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         /// <param name="left">The first instance to compare.</param>
                                         /// <param name="right">The second instance to compare.</param>
                                         /// <returns><c>true</c> if the first instance is greater than or equal to the second instance; otherwise, <c>false</c>.</returns>
-                                        public static bool operator >=({{symbolName}}? left, {{symbolName}}? right)
+                                        public static bool operator >=({{symbolReferenceName}}? left, {{symbolReferenceName}}? right)
                                         {
                                             if (left is null)
                                                 return (right is null ? 0 : -1) >= 0;
@@ -655,7 +799,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 source.AppendLine($$"""
                                         /// <summary>Gets the underlying value of the <see cref="{{symbolName}}" />.</summary>
                                         /// <returns>The underlying value of the <see cref="{{symbolName}}" />.</returns>
-                                        public {{declaredValueType}} To{{fullValueType}}()
+                                        public {{valueTypeReference}} To{{fullValueType}}()
                                         {
                                             return _value;
                                         }
@@ -666,7 +810,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             if (declaredValueType == "Guid")
                 source.AppendLine("""
                                       /// <inheritdoc />
-                                      public override string ToString()
+                                      public override global::System.String ToString()
                                       {
                                           return _value.ToString();
                                       }
@@ -676,7 +820,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             else if (declaredValueType == "string")
                 source.AppendLine("""
                                       /// <inheritdoc />
-                                      public override string ToString()
+                                      public override global::System.String ToString()
                                       {
                                           return _value;
                                       }
@@ -686,33 +830,36 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             else
                 source.AppendLine("""
                                       /// <inheritdoc />
-                                      public override string ToString()
+                                      public override global::System.String ToString()
                                       {
-                                          return _value.ToString(CultureInfo.InvariantCulture);
+                                          return _value.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
                                       }
 
                                   """
                 );
 
-            if (declaredValueType == "string")
-                source.AppendLine($$"""
-                                        private static Result Validate({{declaredValueType}} value)
-                                        {
-                                            if (string.IsNullOrWhiteSpace(value))
-                                                return Result.Failure("The value must not be empty.");
-                                    
-                                            return Result.Success();
-                                        }
-                                    """
-                );
-            else
-                source.AppendLine($$"""
-                                        private static Result Validate({{declaredValueType}} value)
-                                        {
-                                            return Result.Success();
-                                        }
-                                    """
-                );
+            if (!hasCustomValidation)
+            {
+                if (declaredValueType == "string")
+                    source.AppendLine($$"""
+                                            private static global::LightResults.Result Validate({{valueTypeReference}} value)
+                                            {
+                                                if (global::System.String.IsNullOrWhiteSpace(value))
+                                                    return global::LightResults.Result.Failure("The value must not be empty.");
+                                        
+                                                return global::LightResults.Result.Success();
+                                            }
+                                        """
+                    );
+                else
+                    source.AppendLine($$"""
+                                            private static global::LightResults.Result Validate({{valueTypeReference}} value)
+                                            {
+                                                return global::LightResults.Result.Success();
+                                            }
+                                        """
+                    );
+            }
 
             source.AppendLine("""
                               }
@@ -720,90 +867,427 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                               """
             );
 
-            source.AppendLine($$"""
-                                {{(isPublic ? "public" : "internal")}} sealed class {{symbolName}}TypeConverter : TypeConverter
-                                {
-                                    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+            if (!hasGenericContext)
+            {
+                source.AppendLine($$"""
+                                    {{GeneratedCodeAttribute}}
+                                    {{ExcludeFromCodeCoverageAttribute}}
+                                    {{accessibility}} sealed class {{converterName}} : global::System.ComponentModel.TypeConverter{{genericParameterConstraintList}}
                                     {
-                                        return sourceType == typeof(string)
-                                            || sourceType == typeof({{declaredValueType}})
-                                            || base.CanConvertFrom(context, sourceType);
+                                        public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
+                                        {
+                                            return sourceType == typeof(global::System.String)
+                                                || sourceType == typeof({{valueTypeReference}})
+                                                || base.CanConvertFrom(context, sourceType);
+                                        }
+
+                                        public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
+                                        {
+                                            if (value is {{valueTypeReference}} identifierValue)
+                                                return {{symbolReferenceName}}.Create(identifierValue);
+
+                                            if (value is global::System.String stringValue)
+                                                return {{(declaredValueType == "string" ? $"{symbolReferenceName}.Create(stringValue)" : $"{symbolReferenceName}.Parse(stringValue)")}};
+
+                                            return base.ConvertFrom(context, culture, value);
+                                        }
                                     }
 
-                                    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+                                    """
+                );
+                source.AppendLine($$"""
+                                    {{GeneratedCodeAttribute}}
+                                    {{ExcludeFromCodeCoverageAttribute}}
+                                    {{accessibility}} sealed class {{jsonConverterName}} : global::System.Text.Json.Serialization.JsonConverter<{{symbolReferenceName}}>{{genericParameterConstraintList}}
                                     {
-                                        if (value is {{declaredValueType}} identifierValue)
-                                            return {{symbolName}}.Create(identifierValue);
+                                        public override void Write(global::System.Text.Json.Utf8JsonWriter writer, {{symbolReferenceName}} identifier, global::System.Text.Json.JsonSerializerOptions options)
+                                        {
+                                            var value = ((global::LightObjects.IValueObject<{{valueTypeReference}}, {{symbolReferenceName}}>)identifier).Value;
+                                    """
+                );
 
-                                        if (value is string stringValue)
-                                            return {{(declaredValueType == "string" ? $"{symbolName}.Create(stringValue)" : $"{symbolName}.Parse(stringValue)")}};
+                if (declaredValueType == "Guid")
+                    source.AppendLine("""        writer.WriteStringValue(value.ToString());""");
+                else if (declaredValueType == "string")
+                    source.AppendLine("""        writer.WriteStringValue(value);""");
+                else
+                    source.AppendLine("""        writer.WriteNumberValue(value);""");
 
-                                        return base.ConvertFrom(context, culture, value);
+                source.AppendLine($$"""
+                                        }
+
+                                        public override {{symbolReferenceName}} Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
+                                        {
+                                            var value = reader.Get{{fullValueType}}();
+                                    """
+                );
+                if (declaredValueType == "string" && !hasCustomValidation)
+                    source.AppendLine("""
+                                              if (global::System.String.IsNullOrWhiteSpace(value))
+                                                  throw new global::System.InvalidOperationException("The value must not be empty.");
+
+                                      """
+                    );
+                var jsonValueExpression = declaredValueType == "string" && hasCustomValidation ? "value!" : "value";
+                source.Append($$"""
+                                        return {{symbolReferenceName}}.Create({{jsonValueExpression}});
                                     }
                                 }
 
                                 """
-            );
-            source.AppendLine($$"""
-                                {{(isPublic ? "public" : "internal")}} sealed class {{symbolName}}JsonConverter : JsonConverter<{{symbolName}}>
-                                {
-                                    public override void Write(Utf8JsonWriter writer, {{symbolName}} identifier, JsonSerializerOptions options)
-                                    {
-                                        var value = ((IValueObject<{{declaredValueType}}, {{symbolName}}>)identifier).Value;
-                                """
-            );
+                );
+            }
 
-            if (declaredValueType == "Guid")
-                source.AppendLine("""        writer.WriteStringValue(value.ToString());""");
-            else if (declaredValueType == "string")
-                source.AppendLine("""        writer.WriteStringValue(value);""");
-            else
-                source.AppendLine("""        writer.WriteNumberValue(value);""");
-
-            source.AppendLine($$"""
-                                    }
-                                
-                                    public override {{symbolName}} Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-                                    {
-                                        var value = reader.Get{{fullValueType}}();
-                                """
-            );
-            if (declaredValueType == "string")
+            for (var index = 0; index < containingTypeCount; index++)
+            {
                 source.AppendLine("""
-                                          if (string.IsNullOrWhiteSpace(value))
-                                              throw new InvalidOperationException("The value must not be empty.");
+                                  }
 
                                   """
                 );
-            source.Append($$"""
-                                    return {{symbolName}}.Create(value);
-                                }
-                            }
+            }
 
-                            """
-            );
+            if (hasGenericContext)
+            {
+                if (!isStruct)
+                    AppendGenericContextTypeDescriptionProvider(source, typeDescriptionProviderName, valueTypeReference, declaredValueType);
 
-            var hint = $"{identifier.ContainingDeclarations.ToFullyQualifiedName()}.{identifier.Name}.g.cs";
+                AppendGenericContextJsonConverterFactory(
+                    source,
+                    jsonConverterFactoryName,
+                    unboundIdentifierTypeReference,
+                    valueTypeReference,
+                    fullValueType,
+                    declaredValueType,
+                    hasCustomValidation
+                );
+            }
+
+            var hintPrefix = identifier.ContainingDeclarations.ToFullyQualifiedName();
+            var targetHintName = $"{identifier.Name.ToGeneratedIdentifierPart()}{identifier.GenericParameters.ToGenericAritySuffix()}";
+            var hint = hintPrefix.Length == 0 ? $"{targetHintName}.g.cs" : $"{hintPrefix}.{targetHintName}.g.cs";
             context.AddSource(hint, source.ToString());
         }
     }
 
-    private readonly record struct Identifier(
-        EquatableImmutableArray<Declaration> ContainingDeclarations,
-        string Name,
-        bool IsStruct,
-        bool IsPublic,
-        string DeclaredValueType,
-        string FullValueType,
-        bool SupportsProviderBasedTryParse
+    private static bool HasGenericContext(Identifier identifier)
+    {
+        if (identifier.GenericParameters.Count > 0)
+            return true;
+
+        foreach (var declaration in identifier.ContainingDeclarations)
+        {
+            if (declaration.Type != DeclarationType.Namespace && declaration.GenericParameters.Count > 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string ToFullyQualifiedTypeReference(string symbolNamespace, string typeName)
+    {
+        return symbolNamespace.Length == 0 ? $"global::{typeName}" : $"global::{symbolNamespace}.{typeName}";
+    }
+
+    private static string ToGenericContextHelperName(Identifier identifier)
+    {
+        var builder = new StringBuilder("LightObjectsGenerated");
+
+        foreach (var declaration in identifier.ContainingDeclarations)
+        {
+            if (declaration.Type == DeclarationType.Namespace)
+                continue;
+
+            builder.Append('_');
+            builder.Append(declaration.Name.ToGeneratedIdentifierPart());
+            builder.Append(declaration.GenericParameters.Count);
+        }
+
+        builder.Append('_');
+        builder.Append(identifier.Name.ToGeneratedIdentifierPart());
+        builder.Append(identifier.GenericParameters.Count);
+
+        return builder.ToString();
+    }
+
+    private static string ToFullyQualifiedUnboundTypeReference(Identifier identifier)
+    {
+        var builder = new StringBuilder("global::");
+        var needsSeparator = false;
+
+        foreach (var declaration in identifier.ContainingDeclarations)
+        {
+            if (needsSeparator)
+                builder.Append('.');
+
+            builder.Append(declaration.Name);
+
+            if (declaration.Type != DeclarationType.Namespace)
+                builder.Append(declaration.GenericParameters.ToUnboundGenericParameterList());
+
+            needsSeparator = true;
+        }
+
+        if (needsSeparator)
+            builder.Append('.');
+
+        builder.Append(identifier.Name);
+        builder.Append(identifier.GenericParameters.ToUnboundGenericParameterList());
+
+        return builder.ToString();
+    }
+
+    private static void AppendGenericContextTypeDescriptionProvider(StringBuilder source, string typeDescriptionProviderName, string valueTypeReference, string declaredValueType)
+    {
+        source.AppendLine($$"""
+                            {{GeneratedCodeAttribute}}
+                            {{ExcludeFromCodeCoverageAttribute}}
+                            internal sealed class {{typeDescriptionProviderName}} : global::System.ComponentModel.TypeDescriptionProvider
+                            {
+                                private static readonly global::System.ComponentModel.TypeDescriptionProvider DefaultProvider =
+                                    global::System.ComponentModel.TypeDescriptor.GetProvider(typeof(global::System.Object));
+
+                                public {{typeDescriptionProviderName}}()
+                                    : base(DefaultProvider)
+                                {
+                                }
+
+                                public override global::System.ComponentModel.ICustomTypeDescriptor GetTypeDescriptor(global::System.Type objectType, global::System.Object? instance)
+                                {
+                                    var descriptor = base.GetTypeDescriptor(objectType, instance);
+                                    return new IdentifierTypeDescriptor(descriptor, objectType);
+                                }
+
+                                {{GeneratedCodeAttribute}}
+                                {{ExcludeFromCodeCoverageAttribute}}
+                                private sealed class IdentifierTypeDescriptor : global::System.ComponentModel.CustomTypeDescriptor
+                                {
+                                    private readonly global::System.Type _objectType;
+
+                                    public IdentifierTypeDescriptor(global::System.ComponentModel.ICustomTypeDescriptor? parent, global::System.Type objectType)
+                                        : base(parent)
+                                    {
+                                        _objectType = objectType;
+                                    }
+
+                                    public override global::System.ComponentModel.TypeConverter GetConverter()
+                                    {
+                                        return new IdentifierTypeConverter(_objectType);
+                                    }
+                                }
+
+                                {{GeneratedCodeAttribute}}
+                                {{ExcludeFromCodeCoverageAttribute}}
+                                private sealed class IdentifierTypeConverter : global::System.ComponentModel.TypeConverter
+                                {
+                                    private readonly global::System.Reflection.MethodInfo _createMethod;
+                            """
+        );
+
+        if (declaredValueType != "string")
+            source.AppendLine("""
+                                      private readonly global::System.Reflection.MethodInfo _parseMethod;
+                              """
+            );
+
+        source.AppendLine($$"""
+
+                                    public IdentifierTypeConverter(global::System.Type identifierType)
+                                    {
+                                        _createMethod = identifierType.GetMethod(
+                                            "Create",
+                                            global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static,
+                                            binder: null,
+                                            types: new[] { typeof({{valueTypeReference}}) },
+                                            modifiers: null
+                                        ) ?? throw new global::System.InvalidOperationException("The generated identifier Create method could not be found.");
+                            """
+        );
+
+        if (declaredValueType != "string")
+            source.AppendLine("""
+
+                                      _parseMethod = identifierType.GetMethod(
+                                          "Parse",
+                                          global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static,
+                                          binder: null,
+                                          types: new[] { typeof(global::System.String) },
+                                          modifiers: null
+                                      ) ?? throw new global::System.InvalidOperationException("The generated identifier Parse method could not be found.");
+                              """
+            );
+
+        source.AppendLine($$"""
+                                    }
+
+                                    public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
+                                    {
+                                        return sourceType == typeof(global::System.String)
+                                            || sourceType == typeof({{valueTypeReference}})
+                                            || base.CanConvertFrom(context, sourceType);
+                                    }
+
+                                    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
+                                    {
+                                        if (value is {{valueTypeReference}} identifierValue)
+                                            return Create(identifierValue);
+
+                                        if (value is global::System.String stringValue)
+                                            return {{(declaredValueType == "string" ? "Create(stringValue)" : "Parse(stringValue)")}};
+
+                                        return base.ConvertFrom(context, culture, value);
+                                    }
+
+                                    private global::System.Object Create({{valueTypeReference}} value)
+                                    {
+                                        return Invoke(_createMethod, value);
+                                    }
+                            """
+        );
+
+        if (declaredValueType != "string")
+            source.AppendLine("""
+
+                                  private global::System.Object Parse(global::System.String value)
+                                  {
+                                      return Invoke(_parseMethod, value);
+                                  }
+                              """
+            );
+
+        source.AppendLine("""
+
+                                    private static global::System.Object Invoke(global::System.Reflection.MethodInfo method, global::System.Object? value)
+                                    {
+                                        try
+                                        {
+                                            return method.Invoke(null, new[] { value })!;
+                                        }
+                                        catch (global::System.Reflection.TargetInvocationException exception) when (exception.InnerException is not null)
+                                        {
+                                            global::System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+                                            throw;
+                                        }
+                                    }
+                                }
+                            }
+
+                            """
+        );
+    }
+
+    private static void AppendGenericContextJsonConverterFactory(
+        StringBuilder source,
+        string jsonConverterFactoryName,
+        string unboundIdentifierTypeReference,
+        string valueTypeReference,
+        string fullValueType,
+        string declaredValueType,
+        bool hasCustomValidation
     )
     {
-        public EquatableImmutableArray<Declaration> ContainingDeclarations { get; } = ContainingDeclarations;
-        public string Name { get; } = Name;
-        public bool IsStruct { get; } = IsStruct;
-        public bool IsPublic { get; } = IsPublic;
-        public string DeclaredValueType { get; } = DeclaredValueType;
-        public string FullValueType { get; } = FullValueType;
-        public bool SupportsProviderBasedTryParse { get; } = SupportsProviderBasedTryParse;
+        source.AppendLine($$"""
+                            {{GeneratedCodeAttribute}}
+                            {{ExcludeFromCodeCoverageAttribute}}
+                            internal sealed class {{jsonConverterFactoryName}} : global::System.Text.Json.Serialization.JsonConverterFactory
+                            {
+                                public override bool CanConvert(global::System.Type typeToConvert)
+                                {
+                                    return typeToConvert.IsGenericType
+                                        && typeToConvert.GetGenericTypeDefinition() == typeof({{unboundIdentifierTypeReference}});
+                                }
+
+                                public override global::System.Text.Json.Serialization.JsonConverter CreateConverter(global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
+                                {
+                                    var converterType = typeof(IdentifierJsonConverter<>).MakeGenericType(typeToConvert);
+                                    return (global::System.Text.Json.Serialization.JsonConverter)global::System.Activator.CreateInstance(converterType)!;
+                                }
+
+                                {{GeneratedCodeAttribute}}
+                                {{ExcludeFromCodeCoverageAttribute}}
+                                private sealed class IdentifierJsonConverter<TIdentifier> : global::System.Text.Json.Serialization.JsonConverter<TIdentifier>
+                                    where TIdentifier : notnull
+                                {
+                                    private static readonly global::System.Reflection.MethodInfo CreateMethod =
+                                        typeof(TIdentifier).GetMethod(
+                                            "Create",
+                                            global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static,
+                                            binder: null,
+                                            types: new[] { typeof({{valueTypeReference}}) },
+                                            modifiers: null
+                                        ) ?? throw new global::System.InvalidOperationException("The generated identifier Create method could not be found.");
+
+                                    public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TIdentifier identifier, global::System.Text.Json.JsonSerializerOptions options)
+                                    {
+                                        var value = ((global::LightObjects.IValueObject<{{valueTypeReference}}, TIdentifier>)identifier).Value;
+                            """
+        );
+
+        if (declaredValueType == "Guid")
+            source.AppendLine("""            writer.WriteStringValue(value.ToString());""");
+        else if (declaredValueType == "string")
+            source.AppendLine("""            writer.WriteStringValue(value);""");
+        else
+            source.AppendLine("""            writer.WriteNumberValue(value);""");
+
+        source.AppendLine($$"""
+                                    }
+
+                                    public override TIdentifier Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
+                                    {
+                                        var value = reader.Get{{fullValueType}}();
+                            """
+        );
+
+        if (declaredValueType == "string" && !hasCustomValidation)
+            source.AppendLine("""
+                                      if (global::System.String.IsNullOrWhiteSpace(value))
+                                          throw new global::System.InvalidOperationException("The value must not be empty.");
+
+                              """
+            );
+
+        var jsonValueExpression = declaredValueType == "string" && hasCustomValidation ? "value!" : "value";
+        source.AppendLine($$"""
+                                        return Create({{jsonValueExpression}});
+                                    }
+
+                                    private static TIdentifier Create({{valueTypeReference}} value)
+                                    {
+                                        try
+                                        {
+                                            return (TIdentifier)CreateMethod.Invoke(null, new global::System.Object?[] { value })!;
+                                        }
+                                        catch (global::System.Reflection.TargetInvocationException exception) when (exception.InnerException is not null)
+                                        {
+                                            global::System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+                                            throw;
+                                        }
+                                    }
+                                }
+                            }
+
+                            """
+        );
+    }
+
+    private readonly record struct IdentifierResult
+    {
+        public Identifier? Value { get; init; }
+        public Diagnostic? Diagnostic { get; init; }
+    }
+
+    private readonly record struct Identifier
+    {
+        public required EquatableImmutableArray<Declaration> ContainingDeclarations { get; init; }
+        public required string Name { get; init; }
+        public required EquatableImmutableArray<string> GenericParameters { get; init; }
+        public required EquatableImmutableArray<string> GenericParameterConstraints { get; init; }
+        public required bool IsStruct { get; init; }
+        public required string Accessibility { get; init; }
+        public required string DeclaredValueType { get; init; }
+        public required string FullValueType { get; init; }
+        public required bool SupportsProviderBasedTryParse { get; init; }
+        public required bool HasCustomValidation { get; init; }
     }
 }

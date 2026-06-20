@@ -10,80 +10,74 @@
 
 #nullable enable
 
-using System.ComponentModel;
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using LightResults;
-using LightObjects;
-
 namespace MyProject.Identifiers;
 
-[TypeConverter(typeof(TestGuidIdTypeConverter))]
-[JsonConverter(typeof(TestGuidIdJsonConverter))]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.ComponentModel.TypeConverter(typeof(TestGuidIdTypeConverter))]
+[global::System.Text.Json.Serialization.JsonConverter(typeof(TestGuidIdJsonConverter))]
 public readonly partial struct TestGuidId :
-    ICreatableValueObject<Guid, TestGuidId>,
-    IParsableValueObject<TestGuidId>,
-    IValueObject<Guid, TestGuidId>,
-    IComparable<TestGuidId>,
-    IComparable
+    global::LightObjects.ICreatableValueObject<global::System.Guid, TestGuidId>,
+    global::LightObjects.IParsableValueObject<TestGuidId>,
+    global::LightObjects.IValueObject<global::System.Guid, TestGuidId>,
+    global::System.IComparable<TestGuidId>,
+    global::System.IComparable
 {
-    Guid IValueObject<Guid, TestGuidId>.Value => _value;
+    global::System.Guid global::LightObjects.IValueObject<global::System.Guid, TestGuidId>.Value => _value;
 
-    private readonly Guid _value;
+    private readonly global::System.Guid _value;
 
-    private TestGuidId(Guid value, bool skipValidation = false)
+    private TestGuidId(global::System.Guid value, bool skipValidation = false)
     {
         if (!skipValidation)
-            ValueObjectException.ThrowIfFailed(Validate(value));
+            global::LightObjects.ValueObjectException.ThrowIfFailed(Validate(value));
 
         _value = value;
     }
 
     /// <inheritdoc />
-    public static TestGuidId Create(Guid value)
+    public static TestGuidId Create(global::System.Guid value)
     {
         var result = TryCreate(value);
         if (result.IsSuccess(out var identifier, out var error))
             return identifier;
 
-        throw new ValueObjectException(error.Message);
+        throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
     /// <inheritdoc />
-    public static Result<TestGuidId> TryCreate(Guid value)
+    public static global::LightResults.Result<TestGuidId> TryCreate(global::System.Guid value)
     {
         var validation = Validate(value);
         if (validation.IsFailure(out var error))
-            return Result.Failure<TestGuidId>(error);
+            return global::LightResults.Result.Failure<TestGuidId>(error);
 
         var identifier = new TestGuidId(value, true);
-        return Result.Success<TestGuidId>(identifier);
+        return global::LightResults.Result.Success<TestGuidId>(identifier);
     }
 
     /// <inheritdoc />
-    public static TestGuidId Parse(string s)
+    public static TestGuidId Parse(global::System.String s)
     {
         var result = TryParse(s);
         if (result.IsSuccess(out var identifier, out var error))
             return identifier;
 
-        throw new ValueObjectException(error.Message);
+        throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
     /// <inheritdoc />
-    public static Result<TestGuidId> TryParse(string s)
+    public static global::LightResults.Result<TestGuidId> TryParse(global::System.String s)
     {
-        if (Guid.TryParse(s, out var value))
+        if (global::System.Guid.TryParse(s, out var value))
             return TryCreate(value);
 
-        return Result.Failure<TestGuidId>("The string is not a valid identifier.");
+        return global::LightResults.Result.Failure<TestGuidId>("The string is not a valid identifier.");
     }
 
     /// <inheritdoc />
-    public static bool TryParse(string s, out TestGuidId identifier)
+    public static bool TryParse(global::System.String s, out TestGuidId identifier)
     {
-        if (Guid.TryParse(s, out var value))
+        if (global::System.Guid.TryParse(s, out var value))
             return TryCreate(value).IsSuccess(out identifier);
 
         identifier = default;
@@ -97,7 +91,7 @@ public readonly partial struct TestGuidId :
     }
 
     /// <inheritdoc />
-    public override bool Equals(object? obj)
+    public override bool Equals(global::System.Object? obj)
     {
         return obj is TestGuidId other && Equals(other);
     }
@@ -133,11 +127,11 @@ public readonly partial struct TestGuidId :
     }
 
     /// <inheritdoc />
-    public int CompareTo(object? obj)
+    public int CompareTo(global::System.Object? obj)
     {
-        if (ReferenceEquals(null, obj))
+        if (global::System.Object.ReferenceEquals(null, obj))
             return 1;
-        return obj is TestGuidId other ? CompareTo(other) : throw new ArgumentException($"Object must be of type {nameof(TestGuidId)}.");
+        return obj is TestGuidId other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof(TestGuidId)}.");
     }
 
     /// <summary>Determines whether the first instance of <see cref="TestGuidId" /> is less than the second instance.</summary>
@@ -178,53 +172,57 @@ public readonly partial struct TestGuidId :
 
     /// <summary>Gets the underlying value of the <see cref="TestGuidId" />.</summary>
     /// <returns>The underlying value of the <see cref="TestGuidId" />.</returns>
-    public Guid ToGuid()
+    public global::System.Guid ToGuid()
     {
         return _value;
     }
 
     /// <inheritdoc />
-    public override string ToString()
+    public override global::System.String ToString()
     {
         return _value.ToString();
     }
 
-    private static Result Validate(Guid value)
+    private static global::LightResults.Result Validate(global::System.Guid value)
     {
-        return Result.Success();
+        return global::LightResults.Result.Success();
     }
 }
 
-public sealed class TestGuidIdTypeConverter : TypeConverter
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
+public sealed class TestGuidIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
-    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+    public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
     {
-        return sourceType == typeof(string)
-            || sourceType == typeof(Guid)
+        return sourceType == typeof(global::System.String)
+            || sourceType == typeof(global::System.Guid)
             || base.CanConvertFrom(context, sourceType);
     }
 
-    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
     {
-        if (value is Guid identifierValue)
+        if (value is global::System.Guid identifierValue)
             return TestGuidId.Create(identifierValue);
 
-        if (value is string stringValue)
+        if (value is global::System.String stringValue)
             return TestGuidId.Parse(stringValue);
 
         return base.ConvertFrom(context, culture, value);
     }
 }
 
-public sealed class TestGuidIdJsonConverter : JsonConverter<TestGuidId>
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
+public sealed class TestGuidIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestGuidId>
 {
-    public override void Write(Utf8JsonWriter writer, TestGuidId identifier, JsonSerializerOptions options)
+    public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestGuidId identifier, global::System.Text.Json.JsonSerializerOptions options)
     {
-        var value = ((IValueObject<Guid, TestGuidId>)identifier).Value;
+        var value = ((global::LightObjects.IValueObject<global::System.Guid, TestGuidId>)identifier).Value;
         writer.WriteStringValue(value.ToString());
     }
 
-    public override TestGuidId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override TestGuidId Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = reader.GetGuid();
         return TestGuidId.Create(value);

@@ -41,7 +41,7 @@ internal static class SymbolExtensions
 
         if (!symbol.IsGlobalNamespace)
         {
-            var namespaceDeclaration = new Declaration(DeclarationType.Namespace, symbol.Name, EquatableImmutableArray<string>.Empty);
+            var namespaceDeclaration = new Declaration(DeclarationType.Namespace, symbol.Name.ToEscapedIdentifier(), EquatableImmutableArray<string>.Empty);
             declarations.Push(namespaceDeclaration);
         }
 
@@ -58,14 +58,16 @@ internal static class SymbolExtensions
             return;
 
         var genericTypeParameters = symbol.GetGenericTypeParameters(cancellationToken);
+        var genericTypeParameterConstraints = symbol.GetGenericTypeParameterConstraints(cancellationToken);
+        var accessibility = symbol.DeclaredAccessibility.ToKeyword();
 
-        var typeDeclaration = new Declaration(declarationType.Value, symbol.Name, genericTypeParameters);
+        var typeDeclaration = new Declaration(declarationType.Value, symbol.Name.ToEscapedIdentifier(), genericTypeParameters, genericTypeParameterConstraints, accessibility, symbol.IsStatic);
         declarations.Push(typeDeclaration);
 
         BuildContainingSymbolHierarchy(symbol, declarations, cancellationToken);
     }
 
-    private static EquatableImmutableArray<string> GetGenericTypeParameters(this INamedTypeSymbol symbol, CancellationToken cancellationToken)
+    public static EquatableImmutableArray<string> GetGenericTypeParameters(this INamedTypeSymbol symbol, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -77,10 +79,68 @@ internal static class SymbolExtensions
         for (var index = 0; index < symbol.TypeParameters.Length; index++)
         {
             var typeParameter = symbol.TypeParameters[index];
-            genericTypeParameters.Add(typeParameter.Name);
+            genericTypeParameters.Add(typeParameter.Name.ToEscapedIdentifier());
         }
 
         return genericTypeParameters.ToEquatableImmutableArray();
+    }
+
+    public static string ToKeyword(this Accessibility accessibility)
+    {
+        return accessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedAndInternal => "private protected",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            _ => string.Empty,
+        };
+    }
+
+    public static EquatableImmutableArray<string> GetGenericTypeParameterConstraints(this INamedTypeSymbol symbol, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!symbol.IsGenericType)
+            return EquatableImmutableArray<string>.Empty;
+
+        var genericTypeParameterConstraints = new List<string>();
+
+        for (var index = 0; index < symbol.TypeParameters.Length; index++)
+        {
+            var typeParameter = symbol.TypeParameters[index];
+            var constraints = typeParameter.GetConstraintParts();
+            if (constraints.Count == 0)
+                continue;
+
+            genericTypeParameterConstraints.Add($"where {typeParameter.Name.ToEscapedIdentifier()} : {string.Join(", ", constraints)}");
+        }
+
+        return genericTypeParameterConstraints.ToEquatableImmutableArray();
+    }
+
+    private static List<string> GetConstraintParts(this ITypeParameterSymbol typeParameter)
+    {
+        var constraints = new List<string>();
+
+        if (typeParameter.HasUnmanagedTypeConstraint)
+            constraints.Add("unmanaged");
+        else if (typeParameter.HasValueTypeConstraint)
+            constraints.Add("struct");
+        else if (typeParameter.HasReferenceTypeConstraint)
+            constraints.Add(typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated ? "class?" : "class");
+        else if (typeParameter.HasNotNullConstraint)
+            constraints.Add("notnull");
+
+        foreach (var constraintType in typeParameter.ConstraintTypes)
+            constraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+
+        if (typeParameter.HasConstructorConstraint)
+            constraints.Add("new()");
+
+        return constraints;
     }
 
     private static DeclarationType? GetDeclarationType(this ITypeSymbol symbol, CancellationToken cancellationToken)

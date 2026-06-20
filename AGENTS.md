@@ -32,7 +32,8 @@ This repo normally builds with multiple target frameworks (net8.0–net10.0) and
 
 1. Keep the public API stable. The library is consumed by other packages and applications.
 2. When modifying or adding generated code templates, ensure the tests under `tests/LightObjects.Generated.Tests` are updated accordingly.
-3. Follow existing code style: modern C#, `Nullable` and `ImplicitUsings` enabled, `LangVersion` set to `latest`.
-4. Commit generated files when updating generator output so snapshot tests remain consistent.
-5. The project uses the MIT license—ensure any new code is compatible with this license.
+3. When adding or changing analyzer diagnostics, record them in `src/LightObjects.Generated/AnalyzerReleases.Shipped.md`; do not leave new analyzer entries in `AnalyzerReleases.Unshipped.md`.
+4. Follow existing code style: modern C#, `Nullable` and `ImplicitUsings` enabled, `LangVersion` set to `latest`.
+5. Commit generated files when updating generator output so snapshot tests remain consistent.
+6. The project uses the MIT license—ensure any new code is compatible with this license.
 

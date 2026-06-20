@@ -10,30 +10,24 @@
 
 #nullable enable
 
-using System.ComponentModel;
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using LightResults;
-using LightObjects;
-
-[TypeConverter(typeof(TestShortIdTypeConverter))]
-[JsonConverter(typeof(TestShortIdJsonConverter))]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.ComponentModel.TypeConverter(typeof(TestShortIdTypeConverter))]
+[global::System.Text.Json.Serialization.JsonConverter(typeof(TestShortIdJsonConverter))]
 public readonly partial struct TestShortId :
-    ICreatableValueObject<short, TestShortId>,
-    IParsableValueObject<TestShortId>,
-    IValueObject<short, TestShortId>,
-    IComparable<TestShortId>,
-    IComparable
+    global::LightObjects.ICreatableValueObject<short, TestShortId>,
+    global::LightObjects.IParsableValueObject<TestShortId>,
+    global::LightObjects.IValueObject<short, TestShortId>,
+    global::System.IComparable<TestShortId>,
+    global::System.IComparable
 {
-    short IValueObject<short, TestShortId>.Value => _value;
+    short global::LightObjects.IValueObject<short, TestShortId>.Value => _value;
 
     private readonly short _value;
 
     private TestShortId(short value, bool skipValidation = false)
     {
         if (!skipValidation)
-            ValueObjectException.ThrowIfFailed(Validate(value));
+            global::LightObjects.ValueObjectException.ThrowIfFailed(Validate(value));
 
         _value = value;
     }
@@ -45,41 +39,41 @@ public readonly partial struct TestShortId :
         if (result.IsSuccess(out var identifier, out var error))
             return identifier;
 
-        throw new ValueObjectException(error.Message);
+        throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
     /// <inheritdoc />
-    public static Result<TestShortId> TryCreate(short value)
+    public static global::LightResults.Result<TestShortId> TryCreate(short value)
     {
         var validation = Validate(value);
         if (validation.IsFailure(out var error))
-            return Result.Failure<TestShortId>(error);
+            return global::LightResults.Result.Failure<TestShortId>(error);
 
         var identifier = new TestShortId(value, true);
-        return Result.Success<TestShortId>(identifier);
+        return global::LightResults.Result.Success<TestShortId>(identifier);
     }
 
     /// <inheritdoc />
-    public static TestShortId Parse(string s)
+    public static TestShortId Parse(global::System.String s)
     {
         var result = TryParse(s);
         if (result.IsSuccess(out var identifier, out var error))
             return identifier;
 
-        throw new ValueObjectException(error.Message);
+        throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
     /// <inheritdoc />
-    public static Result<TestShortId> TryParse(string s)
+    public static global::LightResults.Result<TestShortId> TryParse(global::System.String s)
     {
         if (short.TryParse(s, out var value))
             return TryCreate(value);
 
-        return Result.Failure<TestShortId>("The string is not a valid identifier.");
+        return global::LightResults.Result.Failure<TestShortId>("The string is not a valid identifier.");
     }
 
     /// <inheritdoc />
-    public static bool TryParse(string s, out TestShortId identifier)
+    public static bool TryParse(global::System.String s, out TestShortId identifier)
     {
         if (short.TryParse(s, out var value))
             return TryCreate(value).IsSuccess(out identifier);
@@ -89,7 +83,7 @@ public readonly partial struct TestShortId :
     }
 
     /// <inheritdoc />
-    public static bool TryParse(string s, IFormatProvider provider, out TestShortId identifier)
+    public static bool TryParse(global::System.String s, global::System.IFormatProvider provider, out TestShortId identifier)
     {
         if (short.TryParse(s, provider, out var value))
             return TryCreate(value).IsSuccess(out identifier);
@@ -105,7 +99,7 @@ public readonly partial struct TestShortId :
     }
 
     /// <inheritdoc />
-    public override bool Equals(object? obj)
+    public override bool Equals(global::System.Object? obj)
     {
         return obj is TestShortId other && Equals(other);
     }
@@ -141,11 +135,11 @@ public readonly partial struct TestShortId :
     }
 
     /// <inheritdoc />
-    public int CompareTo(object? obj)
+    public int CompareTo(global::System.Object? obj)
     {
-        if (ReferenceEquals(null, obj))
+        if (global::System.Object.ReferenceEquals(null, obj))
             return 1;
-        return obj is TestShortId other ? CompareTo(other) : throw new ArgumentException($"Object must be of type {nameof(TestShortId)}.");
+        return obj is TestShortId other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof(TestShortId)}.");
     }
 
     /// <summary>Determines whether the first instance of <see cref="TestShortId" /> is less than the second instance.</summary>
@@ -192,47 +186,51 @@ public readonly partial struct TestShortId :
     }
 
     /// <inheritdoc />
-    public override string ToString()
+    public override global::System.String ToString()
     {
-        return _value.ToString(CultureInfo.InvariantCulture);
+        return _value.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static Result Validate(short value)
+    private static global::LightResults.Result Validate(short value)
     {
-        return Result.Success();
+        return global::LightResults.Result.Success();
     }
 }
 
-public sealed class TestShortIdTypeConverter : TypeConverter
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
+public sealed class TestShortIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
-    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+    public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
     {
-        return sourceType == typeof(string)
+        return sourceType == typeof(global::System.String)
             || sourceType == typeof(short)
             || base.CanConvertFrom(context, sourceType);
     }
 
-    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
     {
         if (value is short identifierValue)
             return TestShortId.Create(identifierValue);
 
-        if (value is string stringValue)
+        if (value is global::System.String stringValue)
             return TestShortId.Parse(stringValue);
 
         return base.ConvertFrom(context, culture, value);
     }
 }
 
-public sealed class TestShortIdJsonConverter : JsonConverter<TestShortId>
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
+public sealed class TestShortIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestShortId>
 {
-    public override void Write(Utf8JsonWriter writer, TestShortId identifier, JsonSerializerOptions options)
+    public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestShortId identifier, global::System.Text.Json.JsonSerializerOptions options)
     {
-        var value = ((IValueObject<short, TestShortId>)identifier).Value;
+        var value = ((global::LightObjects.IValueObject<short, TestShortId>)identifier).Value;
         writer.WriteNumberValue(value);
     }
 
-    public override TestShortId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override TestShortId Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = reader.GetInt16();
         return TestShortId.Create(value);
