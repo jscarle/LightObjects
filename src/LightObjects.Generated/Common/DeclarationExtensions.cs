@@ -50,4 +50,50 @@ internal static class DeclarationExtensions
 
         return builder.ToString();
     }
+
+    public static string ToGenericParameterList(this EquatableImmutableArray<string> genericParameters)
+    {
+        return genericParameters.Count == 0 ? string.Empty : $"<{string.Join(", ", genericParameters)}>";
+    }
+
+    public static string ToGenericAritySuffix(this EquatableImmutableArray<string> genericParameters)
+    {
+        return genericParameters.Count == 0 ? string.Empty : $"`{genericParameters.Count}";
+    }
+
+    public static string ToGenericConstraintList(this EquatableImmutableArray<string> genericParameterConstraints)
+    {
+        return genericParameterConstraints.Count == 0 ? string.Empty : $" {string.Join(" ", genericParameterConstraints)}";
+    }
+
+    public static string ToIndentedGenericConstraintList(this EquatableImmutableArray<string> genericParameterConstraints)
+    {
+        return genericParameterConstraints.Count == 0 ? string.Empty : $"\n    {string.Join("\n    ", genericParameterConstraints)}";
+    }
+
+    public static string ToUnboundGenericParameterList(this EquatableImmutableArray<string> genericParameters)
+    {
+        if (genericParameters.Count == 0)
+            return string.Empty;
+
+        return genericParameters.Count == 1 ? "<>" : $"<{new string(',', genericParameters.Count - 1)}>";
+    }
+
+    public static string ToPartialDeclaration(this Declaration declaration)
+    {
+        var accessibility = declaration.Accessibility.Length == 0 ? string.Empty : $"{declaration.Accessibility} ";
+        var staticModifier = declaration.IsStatic ? "static " : string.Empty;
+        var genericParameters = declaration.GenericParameters.ToGenericParameterList();
+        var genericParameterConstraints = declaration.GenericParameterConstraints.ToGenericConstraintList();
+
+        return declaration.Type switch
+        {
+            DeclarationType.Interface => $"{accessibility}partial interface {declaration.Name}{genericParameters}{genericParameterConstraints}",
+            DeclarationType.Class => $"{accessibility}{staticModifier}partial class {declaration.Name}{genericParameters}{genericParameterConstraints}",
+            DeclarationType.Record => $"{accessibility}partial record {declaration.Name}{genericParameters}{genericParameterConstraints}",
+            DeclarationType.Struct => $"{accessibility}partial struct {declaration.Name}{genericParameters}{genericParameterConstraints}",
+            DeclarationType.RecordStruct => $"{accessibility}partial record struct {declaration.Name}{genericParameters}{genericParameterConstraints}",
+            _ => throw new InvalidOperationException(),
+        };
+    }
 }

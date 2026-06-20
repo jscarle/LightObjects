@@ -10,30 +10,23 @@
 
 #nullable enable
 
-using System.ComponentModel;
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using LightResults;
-using LightObjects;
-
-[TypeConverter(typeof(TestIntIdTypeConverter))]
-[JsonConverter(typeof(TestIntIdJsonConverter))]
+[global::System.ComponentModel.TypeConverter(typeof(TestIntIdTypeConverter))]
+[global::System.Text.Json.Serialization.JsonConverter(typeof(TestIntIdJsonConverter))]
 public readonly partial struct TestIntId :
-    ICreatableValueObject<int, TestIntId>,
-    IParsableValueObject<TestIntId>,
-    IValueObject<int, TestIntId>,
-    IComparable<TestIntId>,
-    IComparable
+    global::LightObjects.ICreatableValueObject<int, TestIntId>,
+    global::LightObjects.IParsableValueObject<TestIntId>,
+    global::LightObjects.IValueObject<int, TestIntId>,
+    global::System.IComparable<TestIntId>,
+    global::System.IComparable
 {
-    int IValueObject<int, TestIntId>.Value => _value;
+    int global::LightObjects.IValueObject<int, TestIntId>.Value => _value;
 
     private readonly int _value;
 
     private TestIntId(int value, bool skipValidation = false)
     {
         if (!skipValidation)
-            ValueObjectException.ThrowIfFailed(Validate(value));
+            global::LightObjects.ValueObjectException.ThrowIfFailed(Validate(value));
 
         _value = value;
     }
@@ -45,41 +38,41 @@ public readonly partial struct TestIntId :
         if (result.IsSuccess(out var identifier, out var error))
             return identifier;
 
-        throw new ValueObjectException(error.Message);
+        throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
     /// <inheritdoc />
-    public static Result<TestIntId> TryCreate(int value)
+    public static global::LightResults.Result<TestIntId> TryCreate(int value)
     {
         var validation = Validate(value);
         if (validation.IsFailure(out var error))
-            return Result.Failure<TestIntId>(error);
+            return global::LightResults.Result.Failure<TestIntId>(error);
 
         var identifier = new TestIntId(value, true);
-        return Result.Success<TestIntId>(identifier);
+        return global::LightResults.Result.Success<TestIntId>(identifier);
     }
 
     /// <inheritdoc />
-    public static TestIntId Parse(string s)
+    public static TestIntId Parse(global::System.String s)
     {
         var result = TryParse(s);
         if (result.IsSuccess(out var identifier, out var error))
             return identifier;
 
-        throw new ValueObjectException(error.Message);
+        throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
     /// <inheritdoc />
-    public static Result<TestIntId> TryParse(string s)
+    public static global::LightResults.Result<TestIntId> TryParse(global::System.String s)
     {
         if (int.TryParse(s, out var value))
             return TryCreate(value);
 
-        return Result.Failure<TestIntId>("The string is not a valid identifier.");
+        return global::LightResults.Result.Failure<TestIntId>("The string is not a valid identifier.");
     }
 
     /// <inheritdoc />
-    public static bool TryParse(string s, out TestIntId identifier)
+    public static bool TryParse(global::System.String s, out TestIntId identifier)
     {
         if (int.TryParse(s, out var value))
             return TryCreate(value).IsSuccess(out identifier);
@@ -89,7 +82,7 @@ public readonly partial struct TestIntId :
     }
 
     /// <inheritdoc />
-    public static bool TryParse(string s, IFormatProvider provider, out TestIntId identifier)
+    public static bool TryParse(global::System.String s, global::System.IFormatProvider provider, out TestIntId identifier)
     {
         if (int.TryParse(s, provider, out var value))
             return TryCreate(value).IsSuccess(out identifier);
@@ -105,7 +98,7 @@ public readonly partial struct TestIntId :
     }
 
     /// <inheritdoc />
-    public override bool Equals(object? obj)
+    public override bool Equals(global::System.Object? obj)
     {
         return obj is TestIntId other && Equals(other);
     }
@@ -141,11 +134,11 @@ public readonly partial struct TestIntId :
     }
 
     /// <inheritdoc />
-    public int CompareTo(object? obj)
+    public int CompareTo(global::System.Object? obj)
     {
-        if (ReferenceEquals(null, obj))
+        if (global::System.Object.ReferenceEquals(null, obj))
             return 1;
-        return obj is TestIntId other ? CompareTo(other) : throw new ArgumentException($"Object must be of type {nameof(TestIntId)}.");
+        return obj is TestIntId other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof(TestIntId)}.");
     }
 
     /// <summary>Determines whether the first instance of <see cref="TestIntId" /> is less than the second instance.</summary>
@@ -192,47 +185,47 @@ public readonly partial struct TestIntId :
     }
 
     /// <inheritdoc />
-    public override string ToString()
+    public override global::System.String ToString()
     {
-        return _value.ToString(CultureInfo.InvariantCulture);
+        return _value.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static Result Validate(int value)
+    private static global::LightResults.Result Validate(int value)
     {
-        return Result.Success();
+        return global::LightResults.Result.Success();
     }
 }
 
-public sealed class TestIntIdTypeConverter : TypeConverter
+public sealed class TestIntIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
-    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+    public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
     {
-        return sourceType == typeof(string)
+        return sourceType == typeof(global::System.String)
             || sourceType == typeof(int)
             || base.CanConvertFrom(context, sourceType);
     }
 
-    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
     {
         if (value is int identifierValue)
             return TestIntId.Create(identifierValue);
 
-        if (value is string stringValue)
+        if (value is global::System.String stringValue)
             return TestIntId.Parse(stringValue);
 
         return base.ConvertFrom(context, culture, value);
     }
 }
 
-public sealed class TestIntIdJsonConverter : JsonConverter<TestIntId>
+public sealed class TestIntIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestIntId>
 {
-    public override void Write(Utf8JsonWriter writer, TestIntId identifier, JsonSerializerOptions options)
+    public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestIntId identifier, global::System.Text.Json.JsonSerializerOptions options)
     {
-        var value = ((IValueObject<int, TestIntId>)identifier).Value;
+        var value = ((global::LightObjects.IValueObject<int, TestIntId>)identifier).Value;
         writer.WriteNumberValue(value);
     }
 
-    public override TestIntId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override TestIntId Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = reader.GetInt32();
         return TestIntId.Create(value);

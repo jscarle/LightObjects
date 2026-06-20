@@ -100,6 +100,73 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
     }
 
     [Fact]
+    public void GenerateNestedIdentifier_ShouldPreserveContainingType()
+    {
+        var sources = GetSources("""
+                                 public sealed partial class Container
+                                 {
+                                     /// <summary>Represents an identifier.</summary>
+                                     [GeneratedIdentifier<int>]
+                                     public readonly partial struct TestNestedId;
+                                 }
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+        var generatedSource = result.Result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("Container.TestNestedId.g.cs", StringComparison.Ordinal))
+            .GetText()
+            .ToString();
+
+        generatedSource.ShouldContain("public partial class Container");
+        generatedSource.ShouldContain("public readonly partial struct TestNestedId");
+        generatedSource.ShouldContain("global::LightObjects.ICreatableValueObject<int, TestNestedId>");
+        generatedSource.ShouldNotContain("public readonly partial struct Container.TestNestedId");
+    }
+
+    [Fact]
+    public void GenerateGenericIdentifier_ShouldPreserveGenericParameters()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 public readonly partial struct TestGenericId<T>
+                                     where T : class;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+        var generatedSource = result.Result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestGenericId`1.g.cs", StringComparison.Ordinal))
+            .GetText()
+            .ToString();
+
+        generatedSource.ShouldContain("public readonly partial struct TestGenericId<T>");
+        generatedSource.ShouldContain("global::LightObjects.ICreatableValueObject<int, TestGenericId<T>>");
+        generatedSource.ShouldContain("where T : class");
+        generatedSource.ShouldContain("public static TestGenericId<T> Create(int value)");
+        generatedSource.ShouldContain("public sealed class TestGenericIdTypeConverter<T>");
+    }
+
+    [Fact]
+    public void GenerateStringIdentifier_ForStruct_ShouldWarnAndNotGenerateIdentifier()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<string>]
+                                 public readonly partial struct TestStringId;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+
+        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0002");
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().ShouldBe("String identifiers must be declared as classes because default string-backed structs can contain a null value");
+        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("TestStringId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+    }
+
+    [Fact]
     public void GenerateIntIdentifier_WithCustomValidation_ShouldNotGenerateDefaultValidation()
     {
         var sources = GetSources("""
@@ -268,7 +335,7 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
             .GetText()
             .ToString();
 
-        generatedSource.ShouldContain("private static Result Validate(int value)");
+        generatedSource.ShouldContain("private static global::LightResults.Result Validate(int value)");
     }
 
     private static IEnumerable<string> GetSources(string source, bool withNamespace = true)

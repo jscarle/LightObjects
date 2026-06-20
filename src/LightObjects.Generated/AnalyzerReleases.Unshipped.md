@@ -4,7 +4,6 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-LO0001 | LightObjects.Generated | Error | Unsupported identifier type
 
 ### Removed Rules
 

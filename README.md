@@ -169,7 +169,9 @@ if (result.IsFailure(out var error))
 
 ### Creating string identifiers
 
-String identifiers validate that the value is not null, empty, or whitespace.
+String identifiers must be declared as classes. The generator reports a warning for
+`[GeneratedIdentifier<string>]` structs because the default value of a string-backed struct can hold
+`null`. String identifiers validate that the value is not null, empty, or whitespace.
 
 ```csharp
 using LightObjects.Generated;
