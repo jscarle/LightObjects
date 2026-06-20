@@ -12,6 +12,7 @@
 
 namespace MyProject.Identifiers;
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestGuidIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestGuidIdJsonConverter))]
 public readonly partial struct TestGuidId :
@@ -188,6 +189,8 @@ public readonly partial struct TestGuidId :
     }
 }
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestGuidIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
     public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
@@ -209,6 +212,8 @@ public sealed class TestGuidIdTypeConverter : global::System.ComponentModel.Type
     }
 }
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestGuidIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestGuidId>
 {
     public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestGuidId identifier, global::System.Text.Json.JsonSerializerOptions options)

@@ -20,7 +20,7 @@ internal static class DeclarationExtensions
 
             if (builder.Length > 0)
                 builder.Append('.');
-            builder.Append(declaration.Name);
+            builder.Append(declaration.Name.ToGeneratedIdentifierPart());
         }
 
         return builder.ToString();

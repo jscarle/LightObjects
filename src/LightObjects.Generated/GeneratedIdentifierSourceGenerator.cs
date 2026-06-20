@@ -3,6 +3,7 @@ using System.Text;
 using LightObjects.Generated.Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 namespace LightObjects.Generated;
@@ -14,6 +15,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
     private const string GeneratedIdentifierAttributeName = "GeneratedIdentifierAttribute";
     private const string GeneratedIdentifierAttributeFullyQualifiedName = $"{AttributesNamespace}.{GeneratedIdentifierAttributeName}`1";
     private const string GeneratedIdentifierAttributeHint = $"{GeneratedIdentifierAttributeFullyQualifiedName}.g.cs";
+    private const string ExcludeFromCodeCoverageAttribute = "[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]";
+    private static readonly string GeneratedCodeAttribute = $"""[global::System.CodeDom.Compiler.GeneratedCodeAttribute("{typeof(GeneratedIdentifierSourceGenerator).FullName}", "{typeof(GeneratedIdentifierSourceGenerator).Assembly.GetName().Version}")]""";
 
     private static readonly DiagnosticDescriptor UnsupportedIdentifierTypeDiagnostic = new(
         id: "LO0001",
@@ -30,6 +33,33 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         messageFormat: "String identifiers must be declared as classes because default string-backed structs can contain a null value",
         category: "LightObjects.Generated",
         DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor RecordIdentifierDiagnostic = new(
+        id: "LO0003",
+        title: "Record identifiers are not supported",
+        messageFormat: "Record identifiers are not supported. Declare '{0}' as a partial class or struct instead.",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor RefStructIdentifierDiagnostic = new(
+        id: "LO0004",
+        title: "Ref struct identifiers are not supported",
+        messageFormat: "Ref struct identifiers are not supported because generated identifiers implement interfaces and use generic result/converter types",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor FileLocalIdentifierDiagnostic = new(
+        id: "LO0005",
+        title: "File-local identifiers are not supported",
+        messageFormat: "File-local identifiers are not supported because generated partial declarations are emitted into a separate file",
+        category: "LightObjects.Generated",
+        DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
 
@@ -71,6 +101,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                       /// <typeparam name="TIdentifier">
                       /// The underlying type to use as the strongly typed identifier.
                       /// </typeparam>
+                      {GeneratedCodeAttribute}
+                      {ExcludeFromCodeCoverageAttribute}
                       [global::System.AttributeUsage(global::System.AttributeTargets.Struct | global::System.AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                       internal sealed class {GeneratedIdentifierAttributeName}<TIdentifier> : global::System.Attribute;
                       """;
@@ -81,7 +113,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return syntaxNode.IsKind(SyntaxKind.StructDeclaration) || syntaxNode.IsKind(SyntaxKind.ClassDeclaration);
+        return syntaxNode is TypeDeclarationSyntax;
     }
 
     private static IdentifierResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
@@ -91,8 +123,17 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         if (context.TargetSymbol is not INamedTypeSymbol namedTypeSymbol)
             return new IdentifierResult();
 
+        if (context.TargetNode is TypeDeclarationSyntax { Modifiers: var modifiers } && modifiers.Any(static modifier => modifier.IsKind(SyntaxKind.FileKeyword)))
+            return new IdentifierResult { Diagnostic = CreateDiagnostic(FileLocalIdentifierDiagnostic, context, cancellationToken) };
+
+        if (namedTypeSymbol.IsRecord)
+            return new IdentifierResult { Diagnostic = CreateDiagnostic(RecordIdentifierDiagnostic, context, cancellationToken, namedTypeSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)) };
+
+        if (namedTypeSymbol.IsRefLikeType)
+            return new IdentifierResult { Diagnostic = CreateDiagnostic(RefStructIdentifierDiagnostic, context, cancellationToken) };
+
         var containingDeclarations = namedTypeSymbol.GetContainingDeclarations(cancellationToken);
-        var symbolName = namedTypeSymbol.Name;
+        var symbolName = namedTypeSymbol.Name.ToEscapedIdentifier();
         var genericParameters = namedTypeSymbol.GetGenericTypeParameters(cancellationToken);
         var genericParameterConstraints = namedTypeSymbol.GetGenericTypeParameterConstraints(cancellationToken);
         var isStruct = namedTypeSymbol.TypeKind == TypeKind.Struct;
@@ -129,20 +170,17 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 fullValueType = "String";
                 if (isStruct)
                 {
-                    var attributeSyntax = context.Attributes[0].ApplicationSyntaxReference?.GetSyntax(cancellationToken);
-                    var location = attributeSyntax?.GetLocation() ?? context.TargetNode.GetLocation();
-                    var diagnostic = Diagnostic.Create(StringIdentifierStructDiagnostic, location);
+                    var diagnostic = CreateDiagnostic(StringIdentifierStructDiagnostic, context, cancellationToken);
                     return new IdentifierResult { Diagnostic = diagnostic };
                 }
                 break;
             default:
                 if (typeArgument is not { Name: "Guid", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } })
                 {
-                    var attributeSyntax = context.Attributes[0].ApplicationSyntaxReference?.GetSyntax(cancellationToken);
-                    var location = attributeSyntax?.GetLocation() ?? context.TargetNode.GetLocation();
-                    var diagnostic = Diagnostic.Create(
+                    var diagnostic = CreateDiagnostic(
                         UnsupportedIdentifierTypeDiagnostic,
-                        location,
+                        context,
+                        cancellationToken,
                         typeArgument.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
                     );
                     return new IdentifierResult { Diagnostic = diagnostic };
@@ -172,6 +210,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         };
 
         return new IdentifierResult { Value = symbol };
+    }
+
+    private static Diagnostic CreateDiagnostic(DiagnosticDescriptor descriptor, GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken, params object[] messageArgs)
+    {
+        var attributeSyntax = context.Attributes[0].ApplicationSyntaxReference?.GetSyntax(cancellationToken);
+        var location = attributeSyntax?.GetLocation() ?? context.TargetNode.GetLocation();
+        return Diagnostic.Create(descriptor, location, messageArgs);
     }
 
     private static bool HasCustomValidationMethod(INamedTypeSymbol namedTypeSymbol, ITypeSymbol valueType, INamedTypeSymbol? resultType)
@@ -284,6 +329,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 source.AppendLine();
                 containingTypeCount++;
             }
+
+            source.AppendLine(GeneratedCodeAttribute);
 
             if (hasGenericContext)
             {
@@ -823,6 +870,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             if (!hasGenericContext)
             {
                 source.AppendLine($$"""
+                                    {{GeneratedCodeAttribute}}
+                                    {{ExcludeFromCodeCoverageAttribute}}
                                     {{accessibility}} sealed class {{converterName}} : global::System.ComponentModel.TypeConverter{{genericParameterConstraintList}}
                                     {
                                         public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
@@ -847,6 +896,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                     """
                 );
                 source.AppendLine($$"""
+                                    {{GeneratedCodeAttribute}}
+                                    {{ExcludeFromCodeCoverageAttribute}}
                                     {{accessibility}} sealed class {{jsonConverterName}} : global::System.Text.Json.Serialization.JsonConverter<{{symbolReferenceName}}>{{genericParameterConstraintList}}
                                     {
                                         public override void Write(global::System.Text.Json.Utf8JsonWriter writer, {{symbolReferenceName}} identifier, global::System.Text.Json.JsonSerializerOptions options)
@@ -913,7 +964,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             }
 
             var hintPrefix = identifier.ContainingDeclarations.ToFullyQualifiedName();
-            var targetHintName = $"{identifier.Name}{identifier.GenericParameters.ToGenericAritySuffix()}";
+            var targetHintName = $"{identifier.Name.ToGeneratedIdentifierPart()}{identifier.GenericParameters.ToGenericAritySuffix()}";
             var hint = hintPrefix.Length == 0 ? $"{targetHintName}.g.cs" : $"{hintPrefix}.{targetHintName}.g.cs";
             context.AddSource(hint, source.ToString());
         }
@@ -948,12 +999,12 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 continue;
 
             builder.Append('_');
-            builder.Append(declaration.Name);
+            builder.Append(declaration.Name.ToGeneratedIdentifierPart());
             builder.Append(declaration.GenericParameters.Count);
         }
 
         builder.Append('_');
-        builder.Append(identifier.Name);
+        builder.Append(identifier.Name.ToGeneratedIdentifierPart());
         builder.Append(identifier.GenericParameters.Count);
 
         return builder.ToString();
@@ -989,6 +1040,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
     private static void AppendGenericContextTypeDescriptionProvider(StringBuilder source, string typeDescriptionProviderName, string valueTypeReference, string declaredValueType)
     {
         source.AppendLine($$"""
+                            {{GeneratedCodeAttribute}}
+                            {{ExcludeFromCodeCoverageAttribute}}
                             internal sealed class {{typeDescriptionProviderName}} : global::System.ComponentModel.TypeDescriptionProvider
                             {
                                 private static readonly global::System.ComponentModel.TypeDescriptionProvider DefaultProvider =
@@ -1005,6 +1058,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                     return new IdentifierTypeDescriptor(descriptor, objectType);
                                 }
 
+                                {{GeneratedCodeAttribute}}
+                                {{ExcludeFromCodeCoverageAttribute}}
                                 private sealed class IdentifierTypeDescriptor : global::System.ComponentModel.CustomTypeDescriptor
                                 {
                                     private readonly global::System.Type _objectType;
@@ -1021,6 +1076,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                     }
                                 }
 
+                                {{GeneratedCodeAttribute}}
+                                {{ExcludeFromCodeCoverageAttribute}}
                                 private sealed class IdentifierTypeConverter : global::System.ComponentModel.TypeConverter
                                 {
                                     private readonly global::System.Reflection.MethodInfo _createMethod;
@@ -1130,6 +1187,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
     )
     {
         source.AppendLine($$"""
+                            {{GeneratedCodeAttribute}}
+                            {{ExcludeFromCodeCoverageAttribute}}
                             internal sealed class {{jsonConverterFactoryName}} : global::System.Text.Json.Serialization.JsonConverterFactory
                             {
                                 public override bool CanConvert(global::System.Type typeToConvert)
@@ -1144,6 +1203,8 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                     return (global::System.Text.Json.Serialization.JsonConverter)global::System.Activator.CreateInstance(converterType)!;
                                 }
 
+                                {{GeneratedCodeAttribute}}
+                                {{ExcludeFromCodeCoverageAttribute}}
                                 private sealed class IdentifierJsonConverter<TIdentifier> : global::System.Text.Json.Serialization.JsonConverter<TIdentifier>
                                     where TIdentifier : notnull
                                 {

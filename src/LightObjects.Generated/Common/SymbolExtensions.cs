@@ -41,7 +41,7 @@ internal static class SymbolExtensions
 
         if (!symbol.IsGlobalNamespace)
         {
-            var namespaceDeclaration = new Declaration(DeclarationType.Namespace, symbol.Name, EquatableImmutableArray<string>.Empty);
+            var namespaceDeclaration = new Declaration(DeclarationType.Namespace, symbol.Name.ToEscapedIdentifier(), EquatableImmutableArray<string>.Empty);
             declarations.Push(namespaceDeclaration);
         }
 
@@ -61,7 +61,7 @@ internal static class SymbolExtensions
         var genericTypeParameterConstraints = symbol.GetGenericTypeParameterConstraints(cancellationToken);
         var accessibility = symbol.DeclaredAccessibility.ToKeyword();
 
-        var typeDeclaration = new Declaration(declarationType.Value, symbol.Name, genericTypeParameters, genericTypeParameterConstraints, accessibility, symbol.IsStatic);
+        var typeDeclaration = new Declaration(declarationType.Value, symbol.Name.ToEscapedIdentifier(), genericTypeParameters, genericTypeParameterConstraints, accessibility, symbol.IsStatic);
         declarations.Push(typeDeclaration);
 
         BuildContainingSymbolHierarchy(symbol, declarations, cancellationToken);
@@ -79,7 +79,7 @@ internal static class SymbolExtensions
         for (var index = 0; index < symbol.TypeParameters.Length; index++)
         {
             var typeParameter = symbol.TypeParameters[index];
-            genericTypeParameters.Add(typeParameter.Name);
+            genericTypeParameters.Add(typeParameter.Name.ToEscapedIdentifier());
         }
 
         return genericTypeParameters.ToEquatableImmutableArray();
@@ -115,7 +115,7 @@ internal static class SymbolExtensions
             if (constraints.Count == 0)
                 continue;
 
-            genericTypeParameterConstraints.Add($"where {typeParameter.Name} : {string.Join(", ", constraints)}");
+            genericTypeParameterConstraints.Add($"where {typeParameter.Name.ToEscapedIdentifier()} : {string.Join(", ", constraints)}");
         }
 
         return genericTypeParameterConstraints.ToEquatableImmutableArray();

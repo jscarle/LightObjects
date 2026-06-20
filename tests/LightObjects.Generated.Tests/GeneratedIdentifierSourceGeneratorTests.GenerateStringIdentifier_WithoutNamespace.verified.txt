@@ -10,6 +10,7 @@
 
 #nullable enable
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestStringIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestStringIdJsonConverter))]
 public sealed partial class TestStringId :
@@ -186,6 +187,8 @@ public sealed partial class TestStringId :
     }
 }
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestStringIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
     public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
@@ -207,6 +210,8 @@ public sealed class TestStringIdTypeConverter : global::System.ComponentModel.Ty
     }
 }
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestStringIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestStringId>
 {
     public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestStringId identifier, global::System.Text.Json.JsonSerializerOptions options)

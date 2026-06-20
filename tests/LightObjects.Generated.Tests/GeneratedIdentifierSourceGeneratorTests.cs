@@ -146,6 +146,7 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
         generatedSource.ShouldContain("where T : class");
         generatedSource.ShouldContain("public static TestGenericId<T> Create(int value)");
         generatedSource.ShouldContain("[global::System.Text.Json.Serialization.JsonConverter(typeof(global::MyProject.Identifiers.LightObjectsGenerated_TestGenericId1JsonConverterFactory))]");
+        generatedSource.ShouldContain("[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]");
         generatedSource.ShouldContain("internal sealed class LightObjectsGenerated_TestGenericId1JsonConverterFactory");
         generatedSource.ShouldContain("typeToConvert.GetGenericTypeDefinition() == typeof(global::MyProject.Identifiers.TestGenericId<>)");
         generatedSource.ShouldNotContain("TypeConverter(typeof(TestGenericIdTypeConverter<>))");
@@ -171,6 +172,87 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
         generatedSource.ShouldContain("public readonly partial struct TestGenericId<T>");
         generatedSource.ShouldContain("where T : class?");
         generatedSource.ShouldNotContain("where T : class\n");
+    }
+
+    [Fact]
+    public void GenerateIdentifier_WithEscapedKeywordName_ShouldEscapeGeneratedReferences()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 public readonly partial struct @event;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+        result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        result.Result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+
+        var generatedSource = result.Result.GeneratedTrees
+            .Select(tree => tree.GetText().ToString())
+            .Single(source => source.Contains("public readonly partial struct @event", StringComparison.Ordinal));
+
+        generatedSource.ShouldContain("global::LightObjects.ICreatableValueObject<int, @event>");
+        generatedSource.ShouldContain("private @event(int value, bool skipValidation = false)");
+        generatedSource.ShouldContain("public static @event Create(int value)");
+        generatedSource.ShouldContain("public sealed class @eventTypeConverter");
+        generatedSource.ShouldContain("global::System.Text.Json.Serialization.JsonConverter<@event>");
+        generatedSource.ShouldNotContain("partial struct event");
+        generatedSource.ShouldNotContain("JsonConverter<event>");
+    }
+
+    [Fact]
+    public void GenerateRecordIdentifier_ShouldReportDiagnosticAndNotGenerateIdentifier()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 public readonly partial record struct RecordId;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+
+        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0003");
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
+        diagnostic.GetMessage().ShouldBe("Record identifiers are not supported. Declare 'MyProject.Identifiers.RecordId' as a partial class or struct instead.");
+        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("RecordId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void GenerateRefStructIdentifier_ShouldReportDiagnosticAndNotGenerateIdentifier()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 public readonly ref partial struct RefId;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+
+        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0004");
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
+        diagnostic.GetMessage().ShouldBe("Ref struct identifiers are not supported because generated identifiers implement interfaces and use generic result/converter types");
+        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("RefId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void GenerateFileLocalIdentifier_ShouldReportDiagnosticAndNotGenerateIdentifier()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 file readonly partial struct FileId;
+                                 """
+        );
+
+        var result = RunGenerator(sources);
+
+        var diagnostic = result.Result.Diagnostics.Single(diagnostic => diagnostic.Id == "LO0005");
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
+        diagnostic.GetMessage().ShouldBe("File-local identifiers are not supported because generated partial declarations are emitted into a separate file");
+        result.Result.GeneratedTrees.Any(tree => tree.FilePath.EndsWith("FileId.g.cs", StringComparison.Ordinal)).ShouldBeFalse();
     }
 
     [Fact]

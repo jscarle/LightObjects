@@ -12,6 +12,7 @@
 
 namespace MyProject.Identifiers;
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestLongIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestLongIdJsonConverter))]
 public readonly partial struct TestLongId :
@@ -198,6 +199,8 @@ public readonly partial struct TestLongId :
     }
 }
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestLongIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
     public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
@@ -219,6 +222,8 @@ public sealed class TestLongIdTypeConverter : global::System.ComponentModel.Type
     }
 }
 
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestLongIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestLongId>
 {
     public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestLongId identifier, global::System.Text.Json.JsonSerializerOptions options)
