@@ -22,7 +22,8 @@ public sealed class TestGuidIdTest
         var id = TestGuidId.Create(validValue);
 
         // Assert
-        id.ToGuid().ShouldBe(validValue);
+        id.ToGuid()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -35,8 +36,10 @@ public sealed class TestGuidIdTest
         var result = TestGuidId.TryCreate(validValue);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToGuid().ShouldBe(validValue);
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToGuid()
+            .ShouldBe(validValue);
     }
 
     [Fact]
@@ -49,7 +52,8 @@ public sealed class TestGuidIdTest
         var result = TestGuidId.Parse(validString);
 
         // Assert
-        result.ToGuid().ShouldBe(Guid.Parse(validString));
+        result.ToGuid()
+            .ShouldBe(Guid.Parse(validString));
     }
 
     [Theory]
@@ -74,8 +78,10 @@ public sealed class TestGuidIdTest
         var result = TestGuidId.TryParse(validString);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToGuid().ShouldBe(Guid.Parse(validString));
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToGuid()
+            .ShouldBe(Guid.Parse(validString));
     }
 
     [Theory]
@@ -87,7 +93,8 @@ public sealed class TestGuidIdTest
         var result = TestGuidId.TryParse(invalidString);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 

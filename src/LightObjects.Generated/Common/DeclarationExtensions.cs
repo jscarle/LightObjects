@@ -56,6 +56,11 @@ internal static class DeclarationExtensions
         return genericParameters.Count == 0 ? string.Empty : $"<{string.Join(", ", genericParameters)}>";
     }
 
+    public static string ToXmlDocGenericParameterList(this EquatableImmutableArray<string> genericParameters)
+    {
+        return genericParameters.Count == 0 ? string.Empty : $"{{{string.Join(", ", genericParameters)}}}";
+    }
+
     public static string ToGenericAritySuffix(this EquatableImmutableArray<string> genericParameters)
     {
         return genericParameters.Count == 0 ? string.Empty : $"`{genericParameters.Count}";

@@ -20,53 +20,6 @@ internal static class SymbolExtensions
         return declarations.ToEquatableImmutableArray();
     }
 
-    private static void BuildContainingSymbolHierarchy(ISymbol symbol, in Stack<Declaration> declarations, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        switch (symbol.ContainingSymbol)
-        {
-            case INamespaceSymbol namespaceSymbol:
-                BuildNamespaceHierarchy(namespaceSymbol, declarations, cancellationToken);
-                break;
-            case INamedTypeSymbol namedTypeSymbol:
-                BuildTypeHierarchy(namedTypeSymbol, declarations, cancellationToken);
-                break;
-        }
-    }
-
-    private static void BuildNamespaceHierarchy(INamespaceSymbol symbol, in Stack<Declaration> declarations, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!symbol.IsGlobalNamespace)
-        {
-            var namespaceDeclaration = new Declaration(DeclarationType.Namespace, symbol.Name.ToEscapedIdentifier(), EquatableImmutableArray<string>.Empty);
-            declarations.Push(namespaceDeclaration);
-        }
-
-        if (symbol.ContainingNamespace is not null && !symbol.ContainingNamespace.IsGlobalNamespace)
-            BuildNamespaceHierarchy(symbol.ContainingNamespace, declarations, cancellationToken);
-    }
-
-    private static void BuildTypeHierarchy(INamedTypeSymbol symbol, in Stack<Declaration> declarations, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var declarationType = symbol.GetDeclarationType(cancellationToken);
-        if (declarationType is null)
-            return;
-
-        var genericTypeParameters = symbol.GetGenericTypeParameters(cancellationToken);
-        var genericTypeParameterConstraints = symbol.GetGenericTypeParameterConstraints(cancellationToken);
-        var accessibility = symbol.DeclaredAccessibility.ToKeyword();
-
-        var typeDeclaration = new Declaration(declarationType.Value, symbol.Name.ToEscapedIdentifier(), genericTypeParameters, genericTypeParameterConstraints, accessibility, symbol.IsStatic);
-        declarations.Push(typeDeclaration);
-
-        BuildContainingSymbolHierarchy(symbol, declarations, cancellationToken);
-    }
-
     public static EquatableImmutableArray<string> GetGenericTypeParameters(this INamedTypeSymbol symbol, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -119,6 +72,55 @@ internal static class SymbolExtensions
         }
 
         return genericTypeParameterConstraints.ToEquatableImmutableArray();
+    }
+
+    private static void BuildContainingSymbolHierarchy(ISymbol symbol, in Stack<Declaration> declarations, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        switch (symbol.ContainingSymbol)
+        {
+            case INamespaceSymbol namespaceSymbol:
+                BuildNamespaceHierarchy(namespaceSymbol, declarations, cancellationToken);
+                break;
+            case INamedTypeSymbol namedTypeSymbol:
+                BuildTypeHierarchy(namedTypeSymbol, declarations, cancellationToken);
+                break;
+        }
+    }
+
+    private static void BuildNamespaceHierarchy(INamespaceSymbol symbol, in Stack<Declaration> declarations, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!symbol.IsGlobalNamespace)
+        {
+            var namespaceDeclaration = new Declaration(DeclarationType.Namespace, symbol.Name.ToEscapedIdentifier(), EquatableImmutableArray<string>.Empty);
+            declarations.Push(namespaceDeclaration);
+        }
+
+        if (symbol.ContainingNamespace is not null && !symbol.ContainingNamespace.IsGlobalNamespace)
+            BuildNamespaceHierarchy(symbol.ContainingNamespace, declarations, cancellationToken);
+    }
+
+    private static void BuildTypeHierarchy(INamedTypeSymbol symbol, in Stack<Declaration> declarations, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var declarationType = symbol.GetDeclarationType(cancellationToken);
+        if (declarationType is null)
+            return;
+
+        var genericTypeParameters = symbol.GetGenericTypeParameters(cancellationToken);
+        var genericTypeParameterConstraints = symbol.GetGenericTypeParameterConstraints(cancellationToken);
+        var accessibility = symbol.DeclaredAccessibility.ToKeyword();
+
+        var typeDeclaration = new Declaration(declarationType.Value, symbol.Name.ToEscapedIdentifier(), genericTypeParameters, genericTypeParameterConstraints,
+            accessibility, symbol.IsStatic
+        );
+        declarations.Push(typeDeclaration);
+
+        BuildContainingSymbolHierarchy(symbol, declarations, cancellationToken);
     }
 
     private static List<string> GetConstraintParts(this ITypeParameterSymbol typeParameter)

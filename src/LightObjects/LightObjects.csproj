@@ -17,9 +17,9 @@
 
     <!-- References -->
     <ItemGroup>
-        <PackageReference Include="LightResults" Version="10.0.0" />
+        <PackageReference Include="LightResults" Version="10.0.4"/>
         <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" PrivateAssets="all" GeneratePathProperty="true"/>
-        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="All"/>
         <ProjectReference Include="..\LightObjects.Generated\LightObjects.Generated.csproj"
                           PrivateAssets="all"
                           ReferenceOutputAssembly="false"
@@ -29,9 +29,9 @@
     <!-- Output -->
     <PropertyGroup>
         <AssemblyName>LightObjects</AssemblyName>
-        <Version>10.0.0</Version>
-        <AssemblyVersion>10.0.0.0</AssemblyVersion>
-        <FileVersion>10.0.0.0</FileVersion>
+        <Version>10.0.1</Version>
+        <AssemblyVersion>10.0.1.0</AssemblyVersion>
+        <FileVersion>10.0.1.0</FileVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
         <Optimize>true</Optimize>
         <IsAotCompatible>true</IsAotCompatible>
@@ -50,7 +50,7 @@
         <RepositoryUrl>https://github.com/jscarle/LightObjects</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <Authors>Jean-Sebastien Carle</Authors>
-        <Copyright>Copyright © Jean-Sebastien Carle 2025</Copyright>
+        <Copyright>Copyright © Jean-Sebastien Carle 2025-2026</Copyright>
         <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
         <PackageIcon>Icon.png</PackageIcon>
         <IncludeSymbols>true</IncludeSymbols>
@@ -69,7 +69,7 @@
     <ItemGroup>
         <InternalsVisibleTo Include="LightObjects.Tests"/>
     </ItemGroup>
-    
+
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

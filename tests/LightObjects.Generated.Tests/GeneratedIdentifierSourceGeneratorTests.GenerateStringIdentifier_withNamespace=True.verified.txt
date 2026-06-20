@@ -33,7 +33,9 @@ public sealed partial class TestStringId :
         _value = value;
     }
 
-    /// <inheritdoc />
+    /// <summary>Creates a <see cref="TestStringId" /> from the specified value.</summary>
+    /// <param name="value">The underlying value.</param>
+    /// <returns>A <see cref="TestStringId" /> that wraps <paramref name="value" />.</returns>
     public static TestStringId Create(global::System.String value)
     {
         var result = TryCreate(value);
@@ -43,7 +45,9 @@ public sealed partial class TestStringId :
         throw new global::LightObjects.ValueObjectException(error.Message);
     }
 
-    /// <inheritdoc />
+    /// <summary>Attempts to create a <see cref="TestStringId" /> from the specified value.</summary>
+    /// <param name="value">The underlying value.</param>
+    /// <returns>A result containing the created <see cref="TestStringId" />, or an error when <paramref name="value" /> is not valid.</returns>
     public static global::LightResults.Result<TestStringId> TryCreate(global::System.String value)
     {
         var validation = Validate(value);
@@ -80,10 +84,10 @@ public sealed partial class TestStringId :
         return global::System.StringComparer.Ordinal.GetHashCode(_value);
     }
 
-    /// <summary>Determines whether two instances of <see cref="TestStringId" /> are equal.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the instances are equal; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether two <see cref="TestStringId" /> values are equal.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if the values are equal; otherwise, <c>false</c>.</returns>
     public static bool operator ==(TestStringId? left, TestStringId? right)
     {
         if (left is null && right is null)
@@ -95,10 +99,10 @@ public sealed partial class TestStringId :
         return left.Equals(right);
     }
 
-    /// <summary>Determines whether two instances of <see cref="TestStringId" /> are not equal.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the instances are not equal; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether two <see cref="TestStringId" /> values are not equal.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if the values are not equal; otherwise, <c>false</c>.</returns>
     public static bool operator !=(TestStringId? left, TestStringId? right)
     {
         if (left is null && right is null)
@@ -110,7 +114,9 @@ public sealed partial class TestStringId :
         return !left.Equals(right);
     }
 
-    /// <inheritdoc />
+    /// <summary>Compares this <see cref="TestStringId" /> value with another value of the same type.</summary>
+    /// <param name="other">The other value to compare, or <c>null</c>.</param>
+    /// <returns>A signed integer that is less than zero if this value is less than <paramref name="other" />, zero if the values are equal, or greater than zero if this value is greater than <paramref name="other" />. A non-null value compares greater than <c>null</c>.</returns>
     public int CompareTo(TestStringId? other)
     {
         if (other is null)
@@ -120,7 +126,10 @@ public sealed partial class TestStringId :
         return global::System.String.Compare(_value, other._value, global::System.StringComparison.Ordinal);
     }
 
-    /// <inheritdoc />
+    /// <summary>Compares this <see cref="TestStringId" /> value with another object.</summary>
+    /// <param name="obj">The object to compare, or <c>null</c>.</param>
+    /// <returns>A signed integer that is less than zero if this value is less than <paramref name="obj" />, zero if the values are equal, or greater than zero if this value is greater than <paramref name="obj" />. A non-null value compares greater than <c>null</c>.</returns>
+    /// <exception cref="System.ArgumentException"><paramref name="obj" /> is not <c>null</c> and is not a <see cref="TestStringId" />.</exception>
     public int CompareTo(global::System.Object? obj)
     {
         if (obj is null)
@@ -130,10 +139,10 @@ public sealed partial class TestStringId :
         return obj is TestStringId other ? CompareTo(other) : throw new global::System.ArgumentException($"Object must be of type {nameof(TestStringId)}.");
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestStringId" /> is less than the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is less than the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestStringId" /> value is less than the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is less than <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator <(TestStringId? left, TestStringId? right)
     {
         if (left is null)
@@ -141,10 +150,10 @@ public sealed partial class TestStringId :
         return left.CompareTo(right) < 0;
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestStringId" /> is greater than the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is greater than the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestStringId" /> value is greater than the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is greater than <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator >(TestStringId? left, TestStringId? right)
     {
         if (left is null)
@@ -152,10 +161,10 @@ public sealed partial class TestStringId :
         return left.CompareTo(right) > 0;
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestStringId" /> is less than or equal to the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is less than or equal to the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestStringId" /> value is less than or equal to the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is less than or equal to <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator <=(TestStringId? left, TestStringId? right)
     {
         if (left is null)
@@ -163,10 +172,10 @@ public sealed partial class TestStringId :
         return left.CompareTo(right) <= 0;
     }
 
-    /// <summary>Determines whether the first instance of <see cref="TestStringId" /> is greater than or equal to the second instance.</summary>
-    /// <param name="left">The first instance to compare.</param>
-    /// <param name="right">The second instance to compare.</param>
-    /// <returns><c>true</c> if the first instance is greater than or equal to the second instance; otherwise, <c>false</c>.</returns>
+    /// <summary>Determines whether the left <see cref="TestStringId" /> value is greater than or equal to the right value.</summary>
+    /// <param name="left">The left value to compare.</param>
+    /// <param name="right">The right value to compare.</param>
+    /// <returns><c>true</c> if <paramref name="left" /> is greater than or equal to <paramref name="right" />; otherwise, <c>false</c>.</returns>
     public static bool operator >=(TestStringId? left, TestStringId? right)
     {
         if (left is null)
@@ -174,7 +183,8 @@ public sealed partial class TestStringId :
         return left.CompareTo(right) >= 0;
     }
 
-    /// <inheritdoc />
+    /// <summary>Returns the underlying string value.</summary>
+    /// <returns>The underlying string value.</returns>
     public override global::System.String ToString()
     {
         return _value;
@@ -189,10 +199,12 @@ public sealed partial class TestStringId :
     }
 }
 
+/// <summary>Provides type conversion for <see cref="TestStringId" /> values.</summary>
 [global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestStringIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
+    /// <inheritdoc />
     public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
     {
         return sourceType == typeof(global::System.String)
@@ -200,6 +212,7 @@ public sealed class TestStringIdTypeConverter : global::System.ComponentModel.Ty
             || base.CanConvertFrom(context, sourceType);
     }
 
+    /// <inheritdoc />
     public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
     {
         if (value is global::System.String identifierValue)
@@ -212,16 +225,19 @@ public sealed class TestStringIdTypeConverter : global::System.ComponentModel.Ty
     }
 }
 
+/// <summary>Provides JSON conversion for <see cref="TestStringId" /> values.</summary>
 [global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.0.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestStringIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestStringId>
 {
+    /// <inheritdoc />
     public override void Write(global::System.Text.Json.Utf8JsonWriter writer, TestStringId identifier, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = ((global::LightObjects.IValueObject<global::System.String, TestStringId>)identifier).Value;
         writer.WriteStringValue(value);
     }
 
+    /// <inheritdoc />
     public override TestStringId Read(ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type typeToConvert, global::System.Text.Json.JsonSerializerOptions options)
     {
         var value = reader.GetString();

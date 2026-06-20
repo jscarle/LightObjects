@@ -19,7 +19,8 @@ public sealed class TestIntIdTest
         var id = TestIntId.Create(validValue);
 
         // Assert
-        id.ToInt32().ShouldBe(validValue);
+        id.ToInt32()
+            .ShouldBe(validValue);
     }
 
     [Fact(Skip = "No longer checking negative values.")]
@@ -45,8 +46,10 @@ public sealed class TestIntIdTest
         var result = TestIntId.TryCreate(validValue);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt32().ShouldBe(validValue);
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt32()
+            .ShouldBe(validValue);
     }
 
     [Fact(Skip = "No longer checking negative values.")]
@@ -59,7 +62,8 @@ public sealed class TestIntIdTest
         var result = TestIntId.TryCreate(invalidValue);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 
@@ -73,7 +77,8 @@ public sealed class TestIntIdTest
         var result = TestIntId.Parse(validString);
 
         // Assert
-        result.ToInt32().ShouldBe(int.Parse(validString));
+        result.ToInt32()
+            .ShouldBe(int.Parse(validString));
     }
 
     [Theory]
@@ -97,8 +102,10 @@ public sealed class TestIntIdTest
         var result = TestIntId.TryParse(validString);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt32().ShouldBe(int.Parse(validString));
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt32()
+            .ShouldBe(int.Parse(validString));
     }
 
     [Theory]
@@ -109,7 +116,8 @@ public sealed class TestIntIdTest
         var result = TestIntId.TryParse(invalidString);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 
@@ -344,4 +352,3 @@ public sealed class TestIntIdTest
         stringValue.ShouldBe("42");
     }
 }
-

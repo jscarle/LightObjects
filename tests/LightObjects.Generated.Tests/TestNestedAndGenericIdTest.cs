@@ -12,7 +12,8 @@ public sealed class TestNestedAndGenericIdTest
     {
         var id = TestIdentifierContainer.TestNestedIntId.Create(42);
 
-        id.ToInt32().ShouldBe(42);
+        id.ToInt32()
+            .ShouldBe(42);
     }
 
     [Fact]
@@ -20,7 +21,8 @@ public sealed class TestNestedAndGenericIdTest
     {
         var id = TestGenericIntId<string>.Create(42);
 
-        id.ToInt32().ShouldBe(42);
+        id.ToInt32()
+            .ShouldBe(42);
     }
 
     [Fact]
@@ -50,7 +52,8 @@ public sealed class TestNestedAndGenericIdTest
 
         var id = converter.ConvertFrom("ABC-123");
 
-        converter.CanConvertFrom(typeof(string)).ShouldBeTrue();
+        converter.CanConvertFrom(typeof(string))
+            .ShouldBeTrue();
         id.ShouldBe(TestGenericStringId<string>.Create("ABC-123"));
     }
 
@@ -59,7 +62,8 @@ public sealed class TestNestedAndGenericIdTest
     {
         var id = TestGenericIdentifierContainer<string>.TestNestedGenericContainerIntId.Create(42);
 
-        id.ToInt32().ShouldBe(42);
+        id.ToInt32()
+            .ShouldBe(42);
     }
 
     [Fact]
@@ -79,6 +83,7 @@ public sealed class TestNestedAndGenericIdTest
     {
         var id = TestNullableReferenceGenericIntId<string?>.Create(42);
 
-        id.ToInt32().ShouldBe(42);
+        id.ToInt32()
+            .ShouldBe(42);
     }
 }

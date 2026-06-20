@@ -19,7 +19,8 @@ public sealed class TestLongIdTest
         var id = TestLongId.Create(validValue);
 
         // Assert
-        id.ToInt64().ShouldBe(validValue);
+        id.ToInt64()
+            .ShouldBe(validValue);
     }
 
     [Fact(Skip = "No longer checking negative values.")]
@@ -45,8 +46,10 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryCreate(validValue);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt64().ShouldBe(validValue);
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt64()
+            .ShouldBe(validValue);
     }
 
     [Fact(Skip = "No longer checking negative values.")]
@@ -59,7 +62,8 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryCreate(invalidValue);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 
@@ -73,7 +77,8 @@ public sealed class TestLongIdTest
         var result = TestLongId.Parse(validString);
 
         // Assert
-        result.ToInt64().ShouldBe(long.Parse(validString));
+        result.ToInt64()
+            .ShouldBe(long.Parse(validString));
     }
 
     [Theory]
@@ -97,8 +102,10 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryParse(validString);
 
         // Assert
-        result.IsSuccess(out var id).ShouldBeTrue();
-        id.ToInt64().ShouldBe(long.Parse(validString));
+        result.IsSuccess(out var id)
+            .ShouldBeTrue();
+        id.ToInt64()
+            .ShouldBe(long.Parse(validString));
     }
 
     [Theory]
@@ -109,7 +116,8 @@ public sealed class TestLongIdTest
         var result = TestLongId.TryParse(invalidString);
 
         // Assert
-        result.IsFailure().ShouldBeTrue();
+        result.IsFailure()
+            .ShouldBeTrue();
         result.Errors.Count.ShouldBe(1);
     }
 
