@@ -91,6 +91,59 @@ else
 `Create` throws a `ValueObjectException` when validation fails. `TryCreate` returns a
 `Result<TIdentifier>` so failures can be handled without exceptions.
 
+### Defining static identifier values
+
+Because generated identifiers are partial types, you can add well-known static values directly to
+the user-authored declaration. Initialize each value through the generated `Create` method.
+
+```csharp
+using LightObjects.Generated;
+
+namespace MyProject.Identifiers;
+
+[GeneratedIdentifier<int>]
+public readonly partial struct StatusId
+{
+    public static StatusId Pending { get; } = Create(1);
+    public static StatusId Enabled { get; } = Create(2);
+    public static StatusId Disabled { get; } = Create(3);
+    public static StatusId Archived { get; } = Create(4);
+}
+```
+
+When the identifier mirrors an enum or lookup table, cast the enum value to the underlying identifier
+type.
+
+```csharp
+public enum Status
+{
+    Pending = 1,
+    Enabled = 2,
+    Disabled = 3,
+    Archived = 4,
+}
+
+[GeneratedIdentifier<int>]
+public readonly partial struct StatusId
+{
+    public static StatusId Pending { get; } = Create((int)Status.Pending);
+    public static StatusId Enabled { get; } = Create((int)Status.Enabled);
+    public static StatusId Disabled { get; } = Create((int)Status.Disabled);
+    public static StatusId Archived { get; } = Create((int)Status.Archived);
+
+    public static IReadOnlyList<StatusId> All { get; } =
+    [
+        Pending,
+        Enabled,
+        Disabled,
+        Archived,
+    ];
+}
+```
+
+This keeps call sites strongly typed while still making fixed database, enum, or lookup identifiers
+easy to reuse.
+
 ### Parsing identifiers
 
 Generated non-string identifiers expose `Parse` and `TryParse`.
@@ -131,6 +184,47 @@ public sealed partial class ProductCode;
 var productCode = ProductCode.Create("ABC-123");
 ```
 
+### Custom validation
+
+Generated identifiers can use custom validation. Add a `Validate` method to the partial identifier
+type with this exact signature:
+
+```csharp
+private static Result Validate(TValue value)
+```
+
+The method name and casing, `private` accessibility, `static` modifier, `LightResults.Result` return
+type, and single input parameter type must all match exactly.
+
+```csharp
+using LightObjects.Generated;
+using LightResults;
+
+namespace MyProject.Identifiers;
+
+[GeneratedIdentifier<int>]
+public readonly partial struct PositiveOrderId
+{
+    private static Result Validate(int value)
+    {
+        if (value <= 0)
+            return Result.Failure("The value must be greater than zero.");
+
+        return Result.Success();
+    }
+}
+```
+
+When the generator detects the exact `private static Result Validate(TValue value)` signature, it does
+not emit its default validation method and the generated `Create`, `TryCreate`, `Parse`, and `TryParse`
+methods call the custom method instead.
+
+If the method does not match exactly, it is not treated as custom validation and the generator emits
+the default validation method.
+
+For string identifiers, custom validation replaces the default null, empty, and whitespace validation,
+so include those checks yourself when they still matter.
+
 ### Accessing the underlying value
 
 Generated numeric and `Guid` identifiers expose a typed conversion method.
@@ -158,11 +252,19 @@ Generated identifiers include `System.Text.Json` converters and `TypeConverter` 
 ```csharp
 using System.Text.Json;
 
-public sealed record Customer(CustomerId Id, string Name);
+public sealed record Customer
+{
+    public required CustomerId Id { get; init; }
+    public required string Name { get; init; }
+}
 ```
 
 ```csharp
-var customer = new Customer(CustomerId.Create(Guid.NewGuid()), "Ada");
+var customer = new Customer
+{
+    Id = CustomerId.Create(Guid.NewGuid()),
+    Name = "Ada",
+};
 var json = JsonSerializer.Serialize(customer);
 var roundTripped = JsonSerializer.Deserialize<Customer>(json);
 ```
@@ -175,10 +277,12 @@ You can implement the interfaces directly when a value object needs custom behav
 using LightObjects;
 using LightResults;
 
-public readonly record struct EmailAddress(string Value) :
+public readonly record struct EmailAddress :
     ICreatableValueObject<string, EmailAddress>,
     IValueObject<string, EmailAddress>
 {
+    public string Value { get; init; }
+
     public static EmailAddress Create(string value)
     {
         var result = TryCreate(value);
@@ -193,7 +297,7 @@ public readonly record struct EmailAddress(string Value) :
         if (string.IsNullOrWhiteSpace(value) || !value.Contains('@', StringComparison.Ordinal))
             return Result.Failure<EmailAddress>("The email address is invalid.");
 
-        return Result.Success(new EmailAddress(value));
+        return Result.Success(new EmailAddress { Value = value });
     }
 }
 ```

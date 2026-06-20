@@ -10,8 +10,6 @@ namespace LightObjects.Generated;
 [Generator]
 public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 {
-    private sealed record IdentifierTransformResult(Identifier? Identifier, Diagnostic? Diagnostic);
-
     private const string AttributesNamespace = "LightObjects.Generated";
     private const string GeneratedIdentifierAttributeName = "GeneratedIdentifierAttribute";
     private const string GeneratedIdentifierAttributeFullyQualifiedName = $"{AttributesNamespace}.{GeneratedIdentifierAttributeName}`1";
@@ -79,12 +77,12 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         return syntaxNode.IsKind(SyntaxKind.StructDeclaration) || syntaxNode.IsKind(SyntaxKind.ClassDeclaration);
     }
 
-    private static IdentifierTransformResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
+    private static IdentifierResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (context.TargetSymbol is not INamedTypeSymbol namedTypeSymbol)
-            return new IdentifierTransformResult(null, null);
+            return new IdentifierResult();
 
         var containingDeclarations = namedTypeSymbol.GetContainingDeclarations(cancellationToken);
         var symbolName = namedTypeSymbol.Name;
@@ -93,7 +91,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
 
         var attribute = context.Attributes[0].AttributeClass!;
         if (attribute.TypeArguments.Length != 1)
-            return new IdentifierTransformResult(null, null);
+            return new IdentifierResult();
 
         var typeArgument = attribute.TypeArguments[0];
 
@@ -131,7 +129,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                         location,
                         typeArgument.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
                     );
-                    return new IdentifierTransformResult(null, diagnostic);
+                    return new IdentifierResult { Diagnostic = diagnostic };
                 }
 
                 declaredValueType = "Guid";
@@ -139,27 +137,61 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                 break;
         }
 
-        var symbol = new Identifier(
-            containingDeclarations,
-            symbolName,
-            isStruct,
-            isPublic,
-            declaredValueType,
-            fullValueType,
-            supportsProviderBasedTryParse
-        );
+        var symbol = new Identifier
+        {
+            ContainingDeclarations = containingDeclarations,
+            Name = symbolName,
+            IsStruct = isStruct,
+            IsPublic = isPublic,
+            DeclaredValueType = declaredValueType,
+            FullValueType = fullValueType,
+            SupportsProviderBasedTryParse = supportsProviderBasedTryParse,
+            HasCustomValidation = HasCustomValidationMethod(
+                namedTypeSymbol,
+                typeArgument,
+                context.SemanticModel.Compilation.GetTypeByMetadataName("LightResults.Result")
+            )
+        };
 
-        return new IdentifierTransformResult(symbol, null);
+        return new IdentifierResult { Value = symbol };
     }
 
-    private static void GenerateIdentifier(SourceProductionContext context, ImmutableArray<IdentifierTransformResult> generatedIdentifiers)
+    private static bool HasCustomValidationMethod(INamedTypeSymbol namedTypeSymbol, ITypeSymbol valueType, INamedTypeSymbol? resultType)
+    {
+        if (resultType is null)
+            return false;
+
+        foreach (var member in namedTypeSymbol.GetMembers("Validate"))
+        {
+            if (member is not IMethodSymbol method)
+                continue;
+
+            if (method is
+                {
+                    MethodKind: MethodKind.Ordinary,
+                    DeclaredAccessibility: Accessibility.Private,
+                    IsStatic: true,
+                    Arity: 0,
+                    Parameters: [{ RefKind: RefKind.None }]
+                }
+                && SymbolEqualityComparer.Default.Equals(method.ReturnType, resultType)
+                && SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, valueType))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void GenerateIdentifier(SourceProductionContext context, ImmutableArray<IdentifierResult> generatedIdentifiers)
     {
         foreach (var result in generatedIdentifiers)
         {
             if (result.Diagnostic is { } diagnostic)
                 context.ReportDiagnostic(diagnostic);
 
-            var symbol = result.Identifier;
+            var symbol = result.Value;
             if (!symbol.HasValue)
                 continue;
 
@@ -173,6 +205,7 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             var fullValueType = identifier.FullValueType;
 
             var supportsProviderBasedTryParse = identifier.SupportsProviderBasedTryParse;
+            var hasCustomValidation = identifier.HasCustomValidation;
 
             var source = new StringBuilder();
 
@@ -694,25 +727,28 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                   """
                 );
 
-            if (declaredValueType == "string")
-                source.AppendLine($$"""
-                                        private static Result Validate({{declaredValueType}} value)
-                                        {
-                                            if (string.IsNullOrWhiteSpace(value))
-                                                return Result.Failure("The value must not be empty.");
-                                    
-                                            return Result.Success();
-                                        }
-                                    """
-                );
-            else
-                source.AppendLine($$"""
-                                        private static Result Validate({{declaredValueType}} value)
-                                        {
-                                            return Result.Success();
-                                        }
-                                    """
-                );
+            if (!hasCustomValidation)
+            {
+                if (declaredValueType == "string")
+                    source.AppendLine($$"""
+                                            private static Result Validate({{declaredValueType}} value)
+                                            {
+                                                if (string.IsNullOrWhiteSpace(value))
+                                                    return Result.Failure("The value must not be empty.");
+                                        
+                                                return Result.Success();
+                                            }
+                                        """
+                    );
+                else
+                    source.AppendLine($$"""
+                                            private static Result Validate({{declaredValueType}} value)
+                                            {
+                                                return Result.Success();
+                                            }
+                                        """
+                    );
+            }
 
             source.AppendLine("""
                               }
@@ -768,15 +804,16 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         var value = reader.Get{{fullValueType}}();
                                 """
             );
-            if (declaredValueType == "string")
+            if (declaredValueType == "string" && !hasCustomValidation)
                 source.AppendLine("""
                                           if (string.IsNullOrWhiteSpace(value))
                                               throw new InvalidOperationException("The value must not be empty.");
 
                                   """
                 );
+            var jsonValueExpression = declaredValueType == "string" && hasCustomValidation ? "value!" : "value";
             source.Append($$"""
-                                    return {{symbolName}}.Create(value);
+                                    return {{symbolName}}.Create({{jsonValueExpression}});
                                 }
                             }
 
@@ -788,22 +825,21 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
         }
     }
 
-    private readonly record struct Identifier(
-        EquatableImmutableArray<Declaration> ContainingDeclarations,
-        string Name,
-        bool IsStruct,
-        bool IsPublic,
-        string DeclaredValueType,
-        string FullValueType,
-        bool SupportsProviderBasedTryParse
-    )
+    private readonly record struct IdentifierResult
     {
-        public EquatableImmutableArray<Declaration> ContainingDeclarations { get; } = ContainingDeclarations;
-        public string Name { get; } = Name;
-        public bool IsStruct { get; } = IsStruct;
-        public bool IsPublic { get; } = IsPublic;
-        public string DeclaredValueType { get; } = DeclaredValueType;
-        public string FullValueType { get; } = FullValueType;
-        public bool SupportsProviderBasedTryParse { get; } = SupportsProviderBasedTryParse;
+        public Identifier? Value { get; init; }
+        public Diagnostic? Diagnostic { get; init; }
+    }
+
+    private readonly record struct Identifier
+    {
+        public required EquatableImmutableArray<Declaration> ContainingDeclarations { get; init; }
+        public required string Name { get; init; }
+        public required bool IsStruct { get; init; }
+        public required bool IsPublic { get; init; }
+        public required string DeclaredValueType { get; init; }
+        public required string FullValueType { get; init; }
+        public required bool SupportsProviderBasedTryParse { get; init; }
+        public required bool HasCustomValidation { get; init; }
     }
 }

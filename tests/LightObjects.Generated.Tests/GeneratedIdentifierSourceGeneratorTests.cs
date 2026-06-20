@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Basic.Reference.Assemblies;
 using Microsoft.CodeAnalysis;
+using Shouldly;
 using SourceGeneratorTestHelpers;
 using SourceGeneratorTestHelpers.XUnit;
 
@@ -96,6 +97,178 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
         var result = RunGenerator(sources);
         await result.VerifyAsync("TestStringId.g.cs")
             .UseMethodName($"{nameof(GenerateStringIdentifier)}_With{(withNamespace ? "" : "out")}Namespace");
+    }
+
+    [Fact]
+    public void GenerateIntIdentifier_WithCustomValidation_ShouldNotGenerateDefaultValidation()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<int>]
+                                 public partial struct TestIntId
+                                 {
+                                     private static LightResults.Result Validate(int value)
+                                     {
+                                         return value > 0
+                                             ? LightResults.Result.Success()
+                                             : LightResults.Result.Failure("The value must be greater than zero.");
+                                     }
+                                 }
+                                 """
+        ).Append("""
+                 namespace LightResults;
+
+                 public readonly struct Result
+                 {
+                     public static Result Success()
+                     {
+                         return default;
+                     }
+
+                     public static Result Failure(string message)
+                     {
+                         return default;
+                     }
+                 }
+                 """);
+
+        var result = RunGenerator(sources);
+        var generatedSource = result.Result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestIntId.g.cs", StringComparison.Ordinal))
+            .GetText()
+            .ToString();
+
+        generatedSource.ShouldContain("var validation = Validate(value);");
+        generatedSource.ShouldNotContain("private static Result Validate(int value)");
+    }
+
+    [Fact]
+    public void GenerateStringIdentifier_WithCustomValidation_ShouldNotGenerateDefaultValidation()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<string>]
+                                 public partial class TestStringId
+                                 {
+                                     private static LightResults.Result Validate(string value)
+                                     {
+                                         return LightResults.Result.Success();
+                                     }
+                                 }
+                                 """
+        ).Append("""
+                 namespace LightResults;
+
+                 public readonly struct Result
+                 {
+                     public static Result Success()
+                     {
+                         return default;
+                     }
+                 }
+                 """);
+
+        var result = RunGenerator(sources);
+        var generatedSource = result.Result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestStringId.g.cs", StringComparison.Ordinal))
+            .GetText()
+            .ToString();
+
+        generatedSource.ShouldContain("var validation = Validate(value);");
+        generatedSource.ShouldContain("return TestStringId.Create(value!);");
+        generatedSource.ShouldNotContain("private static Result Validate(string value)");
+        generatedSource.ShouldNotContain("string.IsNullOrWhiteSpace(value)");
+    }
+
+    public static IEnumerable<object[]> MismatchedCustomValidationSources()
+    {
+        yield return new object[]
+        {
+            """
+            private static LightResults.Result validate(int value)
+            {
+                return LightResults.Result.Success();
+            }
+            """
+        };
+        yield return new object[]
+        {
+            """
+            public static LightResults.Result Validate(int value)
+            {
+                return LightResults.Result.Success();
+            }
+            """
+        };
+        yield return new object[]
+        {
+            """
+            private LightResults.Result Validate(int value)
+            {
+                return LightResults.Result.Success();
+            }
+            """
+        };
+        yield return new object[]
+        {
+            """
+            private static bool Validate(int value)
+            {
+                return true;
+            }
+            """
+        };
+        yield return new object[]
+        {
+            """
+            private static LightResults.Result Validate(long value)
+            {
+                return LightResults.Result.Success();
+            }
+            """
+        };
+        yield return new object[]
+        {
+            """
+            private static LightResults.Result Validate(int value, int other)
+            {
+                return LightResults.Result.Success();
+            }
+            """
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(MismatchedCustomValidationSources))]
+    public void GenerateIntIdentifier_WithMismatchedCustomValidation_ShouldGenerateDefaultValidation(string validationMethod)
+    {
+        var sources = GetSources($$"""
+                                  /// <summary>Represents an identifier.</summary>
+                                  [GeneratedIdentifier<int>]
+                                  public partial struct TestIntId
+                                  {
+                                      {{validationMethod}}
+                                  }
+                                  """
+        ).Append("""
+                 namespace LightResults;
+
+                 public readonly struct Result
+                 {
+                     public static Result Success()
+                     {
+                         return default;
+                     }
+                 }
+                 """);
+
+        var result = RunGenerator(sources);
+        var generatedSource = result.Result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestIntId.g.cs", StringComparison.Ordinal))
+            .GetText()
+            .ToString();
+
+        generatedSource.ShouldContain("private static Result Validate(int value)");
     }
 
     private static IEnumerable<string> GetSources(string source, bool withNamespace = true)

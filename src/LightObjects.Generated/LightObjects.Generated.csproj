@@ -91,6 +91,7 @@
             <TargetPathWithTargetPlatformMoniker Include="$(PKGMicrosoft_Bcl_HashCode)\lib\netstandard2.0\Microsoft.Bcl.HashCode.dll" IncludeRuntimeDependency="false"/>
         </ItemGroup>
     </Target>
+    
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
