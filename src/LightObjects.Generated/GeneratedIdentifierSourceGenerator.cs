@@ -895,25 +895,44 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                         public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
                                         {
                                             return sourceType == typeof(global::System.String)
-                                                || sourceType == typeof({{valueTypeReference}})
-                                                || base.CanConvertFrom(context, sourceType);
-                                        }
-
-                                        /// <inheritdoc />
-                                        public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
-                                        {
-                                            if (value is {{valueTypeReference}} identifierValue)
-                                                return {{symbolReferenceName}}.Create(identifierValue);
-
-                                            if (value is global::System.String stringValue)
-                                                return {{(declaredValueType == "string" ? $"{symbolReferenceName}.Create(stringValue)" : $"{symbolReferenceName}.Parse(stringValue)")}};
-
-                                            return base.ConvertFrom(context, culture, value);
-                                        }
-                                    }
-
                                     """
                 );
+
+                if (declaredValueType == "string")
+                {
+                    source.AppendLine("            || base.CanConvertFrom(context, sourceType);");
+                }
+                else
+                {
+                    source.AppendLine($"            || sourceType == typeof({valueTypeReference})");
+                    source.AppendLine("            || base.CanConvertFrom(context, sourceType);");
+                }
+
+                source.AppendLine("    }");
+                source.AppendLine();
+                source.AppendLine("    /// <inheritdoc />");
+                source.AppendLine("    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)");
+                source.AppendLine("    {");
+
+                if (declaredValueType == "string")
+                {
+                    source.AppendLine($"        if (value is global::System.String stringValue)");
+                    source.AppendLine($"            return {symbolReferenceName}.Create(stringValue);");
+                }
+                else
+                {
+                    source.AppendLine($"        if (value is {valueTypeReference} identifierValue)");
+                    source.AppendLine($"            return {symbolReferenceName}.Create(identifierValue);");
+                    source.Append("\r\n");
+                    source.AppendLine("        if (value is global::System.String stringValue)");
+                    source.AppendLine($"            return {symbolReferenceName}.Parse(stringValue);");
+                }
+
+                source.Append("\r\n");
+                source.AppendLine("        return base.ConvertFrom(context, culture, value);");
+                source.AppendLine("    }");
+                source.AppendLine("}");
+                source.AppendLine();
                 source.AppendLine($$"""
                                     /// <summary>Provides JSON conversion for <see cref="{{symbolXmlDocReferenceName}}" /> values.</summary>
                                     {{GeneratedCodeAttribute}}
@@ -1154,28 +1173,47 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
                                     public override bool CanConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Type sourceType)
                                     {
                                         return sourceType == typeof(global::System.String)
-                                            || sourceType == typeof({{valueTypeReference}})
-                                            || base.CanConvertFrom(context, sourceType);
-                                    }
-
-                                    /// <inheritdoc />
-                                    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)
-                                    {
-                                        if (value is {{valueTypeReference}} identifierValue)
-                                            return Create(identifierValue);
-
-                                        if (value is global::System.String stringValue)
-                                            return {{(declaredValueType == "string" ? "Create(stringValue)" : "Parse(stringValue)")}};
-
-                                        return base.ConvertFrom(context, culture, value);
-                                    }
-
-                                    private global::System.Object Create({{valueTypeReference}} value)
-                                    {
-                                        return Invoke(_createMethod, value);
-                                    }
                             """
         );
+
+        if (declaredValueType == "string")
+        {
+            source.AppendLine("            || base.CanConvertFrom(context, sourceType);");
+        }
+        else
+        {
+            source.AppendLine($"            || sourceType == typeof({valueTypeReference})");
+            source.AppendLine("            || base.CanConvertFrom(context, sourceType);");
+        }
+
+        source.AppendLine("    }");
+        source.AppendLine();
+        source.AppendLine("    /// <inheritdoc />");
+        source.AppendLine("    public override global::System.Object? ConvertFrom(global::System.ComponentModel.ITypeDescriptorContext? context, global::System.Globalization.CultureInfo? culture, global::System.Object value)");
+        source.AppendLine("    {");
+
+        if (declaredValueType == "string")
+        {
+            source.AppendLine("        if (value is global::System.String stringValue)");
+            source.AppendLine("            return Create(stringValue);");
+        }
+        else
+        {
+            source.AppendLine($"        if (value is {valueTypeReference} identifierValue)");
+            source.AppendLine("            return Create(identifierValue);");
+            source.Append("\r\n");
+            source.AppendLine("        if (value is global::System.String stringValue)");
+            source.AppendLine("            return Parse(stringValue);");
+        }
+
+        source.Append("\r\n");
+        source.AppendLine("        return base.ConvertFrom(context, culture, value);");
+        source.AppendLine("    }");
+        source.AppendLine();
+        source.AppendLine($"    private global::System.Object Create({valueTypeReference} value)");
+        source.AppendLine("    {");
+        source.AppendLine("        return Invoke(_createMethod, value);");
+        source.AppendLine("    }");
 
         if (declaredValueType != "string")
             source.AppendLine("""

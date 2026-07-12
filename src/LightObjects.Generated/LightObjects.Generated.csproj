@@ -20,10 +20,10 @@
 
     <!-- References -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0">
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[4.14.0]">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0">
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="[4.14.0]">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="PolySharp" Version="1.16.0">
@@ -32,7 +32,7 @@
         </PackageReference>
         <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" PrivateAssets="all" GeneratePathProperty="true"/>
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="all"/>
-        <PackageReference Include="SonarAnalyzer.CSharp" Version="10.27.0.140913">
+        <PackageReference Include="SonarAnalyzer.CSharp" Version="10.29.0.143774">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -41,9 +41,9 @@
     <!-- Output -->
     <PropertyGroup>
         <AssemblyName>LightObjects.Generated</AssemblyName>
-        <Version>10.0.1</Version>
-        <AssemblyVersion>10.0.1.0</AssemblyVersion>
-        <FileVersion>10.0.1.0</FileVersion>
+        <Version>10.0.2</Version>
+        <AssemblyVersion>10.0.2.0</AssemblyVersion>
+        <FileVersion>10.0.2.0</FileVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
         <IncludeBuildOutput>false</IncludeBuildOutput>
     </PropertyGroup>
