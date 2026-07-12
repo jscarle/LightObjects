@@ -10,7 +10,7 @@
 
 #nullable enable
 
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestStringIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestStringIdJsonConverter))]
 public sealed partial class TestStringId :
@@ -198,7 +198,7 @@ public sealed partial class TestStringId :
 }
 
 /// <summary>Provides type conversion for <see cref="TestStringId" /> values.</summary>
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestStringIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
@@ -220,7 +220,7 @@ public sealed class TestStringIdTypeConverter : global::System.ComponentModel.Ty
 }
 
 /// <summary>Provides JSON conversion for <see cref="TestStringId" /> values.</summary>
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestStringIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestStringId>
 {

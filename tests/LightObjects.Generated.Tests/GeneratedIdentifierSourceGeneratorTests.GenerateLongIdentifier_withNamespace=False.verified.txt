@@ -10,7 +10,7 @@
 
 #nullable enable
 
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestLongIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestLongIdJsonConverter))]
 public readonly partial struct TestLongId :
@@ -219,7 +219,7 @@ public readonly partial struct TestLongId :
 }
 
 /// <summary>Provides type conversion for <see cref="TestLongId" /> values.</summary>
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestLongIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
@@ -245,7 +245,7 @@ public sealed class TestLongIdTypeConverter : global::System.ComponentModel.Type
 }
 
 /// <summary>Provides JSON conversion for <see cref="TestLongId" /> values.</summary>
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestLongIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestLongId>
 {

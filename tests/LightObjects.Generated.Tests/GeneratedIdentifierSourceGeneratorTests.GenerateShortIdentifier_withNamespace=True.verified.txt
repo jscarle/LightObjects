@@ -12,7 +12,7 @@
 
 namespace MyProject.Identifiers;
 
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.ComponentModel.TypeConverter(typeof(TestShortIdTypeConverter))]
 [global::System.Text.Json.Serialization.JsonConverter(typeof(TestShortIdJsonConverter))]
 public readonly partial struct TestShortId :
@@ -221,7 +221,7 @@ public readonly partial struct TestShortId :
 }
 
 /// <summary>Provides type conversion for <see cref="TestShortId" /> values.</summary>
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestShortIdTypeConverter : global::System.ComponentModel.TypeConverter
 {
@@ -247,7 +247,7 @@ public sealed class TestShortIdTypeConverter : global::System.ComponentModel.Typ
 }
 
 /// <summary>Provides JSON conversion for <see cref="TestShortId" /> values.</summary>
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.1.0")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute("LightObjects.Generated.GeneratedIdentifierSourceGenerator", "10.0.2.0")]
 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
 public sealed class TestShortIdJsonConverter : global::System.Text.Json.Serialization.JsonConverter<TestShortId>
 {
