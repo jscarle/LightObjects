@@ -858,10 +858,13 @@ public sealed class GeneratedIdentifierSourceGenerator : IIncrementalGenerator
             {
                 if (declaredValueType == "string")
                     source.AppendLine($$"""
+                                            private static readonly global::LightResults.Result EmptyFailure =
+                                                global::LightResults.Result.Failure("The value must not be empty.");
+
                                             private static global::LightResults.Result Validate({{valueTypeReference}} value)
                                             {
                                                 if (global::System.String.IsNullOrWhiteSpace(value))
-                                                    return global::LightResults.Result.Failure("The value must not be empty.");
+                                                    return EmptyFailure;
 
                                                 return global::LightResults.Result.Success();
                                             }

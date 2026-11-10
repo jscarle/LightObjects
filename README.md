@@ -13,8 +13,10 @@ runtime overhead or allocation-heavy abstractions.
 
 ## References
 
-This library currently targets .NET 8.0, .NET 9.0, and .NET 10.0. The source generator is included
+This library currently targets .NET 8.0, .NET 9.0, .NET 10.0, and .NET 11.0. The source generator is included
 in the `LightObjects` package and is delivered as a Roslyn analyzer.
+
+Build the solution with the .NET 11 SDK.
 
 ## Installation
 
@@ -29,7 +31,7 @@ in the single `LightObjects` package.
 
 ## Dependencies
 
-This library depends on [LightResults](https://www.nuget.org/packages/LightResults) for creation,
+This library depends on [LightResults 11](https://www.nuget.org/packages/LightResults) for creation,
 parsing, and conversion results. No separate source generator package is required.
 
 ## Advantages of this library
@@ -318,6 +320,12 @@ if (typeof(CustomerId).IsValueObjectType(out var valueType))
     Console.WriteLine(valueType.Name);
 }
 ```
+
+## What's new in v11.0
+
+LightObjects 11.0 adds .NET 11 support while retaining .NET 8, 9, and 10 targets, and updates
+the LightResults dependency to version 11. The source generator remains included in the
+single `LightObjects` package.
 
 ## What's new in v10.0
 

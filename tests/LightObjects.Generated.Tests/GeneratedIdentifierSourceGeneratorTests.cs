@@ -10,11 +10,6 @@ namespace LightObjects.Generated.Tests;
 
 public sealed class GeneratedIdentifierSourceGeneratorTests
 {
-    static GeneratedIdentifierSourceGeneratorTests()
-    {
-        ModuleInitializer.Initialize();
-    }
-
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -27,8 +22,9 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var (_, result, _) = RunGenerator(sources);
-        await result.VerifyAsync("TestGuidId.g.cs");
+        var (_, result, diagnostics) = RunGenerator(sources);
+        diagnostics.Where(diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning).ShouldBeEmpty();
+        await result.VerifyAsync("TestGuidId.g.cs", TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -43,8 +39,9 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var (_, result, _) = RunGenerator(sources);
-        await result.VerifyAsync("TestIntId.g.cs");
+        var (_, result, diagnostics) = RunGenerator(sources);
+        diagnostics.Where(diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning).ShouldBeEmpty();
+        await result.VerifyAsync("TestIntId.g.cs", TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -59,8 +56,9 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var (_, result, _) = RunGenerator(sources);
-        await result.VerifyAsync("TestLongId.g.cs");
+        var (_, result, diagnostics) = RunGenerator(sources);
+        diagnostics.Where(diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning).ShouldBeEmpty();
+        await result.VerifyAsync("TestLongId.g.cs", TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -75,8 +73,9 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var (_, result, _) = RunGenerator(sources);
-        await result.VerifyAsync("TestShortId.g.cs");
+        var (_, result, diagnostics) = RunGenerator(sources);
+        diagnostics.Where(diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning).ShouldBeEmpty();
+        await result.VerifyAsync("TestShortId.g.cs", TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -91,8 +90,9 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
                                  """, withNamespace
         );
 
-        var (_, result, _) = RunGenerator(sources);
-        await result.VerifyAsync("TestStringId.g.cs");
+        var (_, result, diagnostics) = RunGenerator(sources);
+        diagnostics.Where(diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning).ShouldBeEmpty();
+        await result.VerifyAsync("TestStringId.g.cs", TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -382,6 +382,26 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
         generatedSource.ShouldNotContain("string.IsNullOrWhiteSpace(value)");
     }
 
+    [Fact]
+    public void GenerateStringIdentifier_WithoutCustomValidation_ShouldCacheEmptyFailure()
+    {
+        var sources = GetSources("""
+                                 /// <summary>Represents an identifier.</summary>
+                                 [GeneratedIdentifier<string>]
+                                 public partial class TestStringId;
+                                 """
+        );
+
+        var (_, result, _) = RunGenerator(sources);
+        var generatedSource = result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("TestStringId.g.cs", StringComparison.Ordinal))
+            .GetText(TestContext.Current.CancellationToken)
+            .ToString();
+
+        generatedSource.ShouldContain("private static readonly global::LightResults.Result EmptyFailure =");
+        generatedSource.ShouldContain("return EmptyFailure;");
+    }
+
     public static IEnumerable<object[]> MismatchedCustomValidationSources()
     {
         yield return
@@ -500,7 +520,10 @@ public sealed class GeneratedIdentifierSourceGeneratorTests
 
     private static IEnumerable<MetadataReference> GetTargetFrameworkReferences()
     {
-#if NET10_0
+#if NET11_0
+        const string targetFramework = "net11.0";
+        const string versionPrefix = "11.";
+#elif NET10_0
         const string targetFramework = "net10.0";
         const string versionPrefix = "10.";
 #elif NET9_0
