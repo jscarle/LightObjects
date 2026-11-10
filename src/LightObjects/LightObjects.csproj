@@ -3,10 +3,9 @@
     <!-- Compilation -->
     <PropertyGroup>
         <RootNamespace>LightObjects</RootNamespace>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
     <!-- Analysis -->
@@ -17,9 +16,8 @@
 
     <!-- References -->
     <ItemGroup>
-        <PackageReference Include="LightResults" Version="10.0.4"/>
+        <PackageReference Include="LightResults" Version="11.0.0"/>
         <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" PrivateAssets="all" GeneratePathProperty="true"/>
-        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="All"/>
         <ProjectReference Include="..\LightObjects.Generated\LightObjects.Generated.csproj"
                           PrivateAssets="all"
                           ReferenceOutputAssembly="false"
@@ -29,9 +27,9 @@
     <!-- Output -->
     <PropertyGroup>
         <AssemblyName>LightObjects</AssemblyName>
-        <Version>10.0.2</Version>
-        <AssemblyVersion>10.0.2.0</AssemblyVersion>
-        <FileVersion>10.0.2.0</FileVersion>
+        <Version>11.0.0</Version>
+        <AssemblyVersion>11.0.0.0</AssemblyVersion>
+        <FileVersion>11.0.0.0</FileVersion>
         <NeutralLanguage>en-US</NeutralLanguage>
         <Optimize>true</Optimize>
         <IsAotCompatible>true</IsAotCompatible>
